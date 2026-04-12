@@ -145,7 +145,7 @@ def skill(
             emoji=emoji,
             params=params or [],
             script_path=Path(inspect.getfile(func)).resolve(),
-            has_demo=any(p.name == "demo" for p in (params or [])),
+            has_demo=any(p.name == "demo" and p.is_flag for p in (params or [])),
             entry_func=func,
         )
         _SKILL_REGISTRY[name] = meta

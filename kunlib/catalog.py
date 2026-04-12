@@ -3,8 +3,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from kunlib.skill import SkillMeta
+from kunlib.skill import SkillMeta, Param
 from kunlib.registry import KUNLIB_SKILLS_DIR
+
+
+def _param_type_name(p: Param) -> str:
+    """Return a stable string representation of a Param's type."""
+    return p.type.__name__ if isinstance(p.type, type) else str(p.type)
 
 
 def generate_catalog(
@@ -32,7 +37,7 @@ def generate_catalog(
                 "has_demo": m.has_demo,
                 "requires_bins": m.requires_bins,
                 "params": [
-                    {"name": p.name, "type": p.type.__name__ if isinstance(p.type, type) else str(p.type),
+                    {"name": p.name, "type": _param_type_name(p),
                      "required": p.required, "default": p.default, "help": p.help, "is_flag": p.is_flag}
                     for p in m.params
                 ],

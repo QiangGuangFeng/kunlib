@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
+from kunlib.catalog import _param_type_name
 from kunlib.registry import discover_all, get_skill_docs
 from kunlib.skill import get_registry, SkillMeta
 from kunlib.result import KunResult
@@ -34,7 +35,7 @@ class KunLibAdapter:
                 "has_demo": m.has_demo,
                 "tags": m.tags,
                 "params": [
-                    {"name": p.name, "type": p.type.__name__ if isinstance(p.type, type) else str(p.type),
+                    {"name": p.name, "type": _param_type_name(p),
                      "required": p.required, "help": p.help, "is_flag": p.is_flag}
                     for p in m.params
                 ],
