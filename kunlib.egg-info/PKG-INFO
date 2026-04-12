@@ -1,3 +1,18 @@
+Metadata-Version: 2.4
+Name: kunlib
+Version: 0.1.0
+Summary: Genetic breeding analysis skill library
+Author: kzy599
+License: MIT
+Keywords: breeding,genetics,bioinformatics,genomic-selection
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Dynamic: license-file
+
 # 🧬 KunLib — Genetic Breeding Analysis Skill Library
 
 KunLib is a skill library for genetic breeding analysis tasks.
