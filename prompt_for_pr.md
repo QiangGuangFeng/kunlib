@@ -1272,5 +1272,3 @@ kunlib/
 ├── Makefile                   # 文件 19
 └── README.md                  # 文件 20
 ```
-
-AGENTS.md 里的 **§"Converting a User Script into a KunLib Skill"** 就是你要的那个 prompt——任何 agent 读到这段指令后，就能把用户随便写的脚本改造成符合 kunlib 规范的技能。
