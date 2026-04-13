@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kunlib"
+version = "0.1.0"
+description = "Genetic breeding analysis skill library"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [{name = "kzy599"}]
+keywords = ["breeding", "genetics", "bioinformatics", "genomic-selection"]
+
+[project.scripts]
+kunlib = "kunlib.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff"]
+
+[tool.setuptools.packages.find]
+include = ["kunlib*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "--import-mode=importlib"
+testpaths = ["tests"]
