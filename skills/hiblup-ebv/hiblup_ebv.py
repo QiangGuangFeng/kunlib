@@ -172,7 +172,7 @@ def run(args: argparse.Namespace) -> KunResult:
         output_dir=output_dir,
         summary=summary,
         data={"checksums": checksums, "trait_pos": trait_pos},
-        tables=tables,
+        files={"tables": tables},
         report_path=report_path,
     )
 

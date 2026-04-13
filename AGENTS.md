@@ -117,7 +117,7 @@ def run(args: argparse.Namespace) -> KunResult:
         mode=mode,
         output_dir=output_dir,
         summary={"key_metric": 42},
-        tables=[output_dir / "tables" / "results.csv"],
+        files={"tables": [output_dir / "tables" / "results.csv"]},
         report_path=output_dir / "report.md",
     )
 
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 | Hardcoded input path | Replace with `args.input` or `SKILL_DIR / "demo" / ...` |
 | Hardcoded output path | Replace with `args.output` |
 | `print()` results | Keep prints, but also `return KunResult(summary={...})` |
-| Writes files to disk | Write to `output_dir`, list in `KunResult.tables`/`.figures` |
+| Writes files to disk | Write to `output_dir`, list in `KunResult.files` dict |
 | R/shell subprocess | Keep as-is, use `subprocess.run(check=True)` |
 | No demo mode | Add `Param("demo", is_flag=True)` + synthetic data in `demo/` |
 | Magic numbers | Extract to `Param(...)` with sensible defaults |
