@@ -169,6 +169,19 @@ if __name__ == "__main__":
 
 ---
 
+## 🚀 Quick Start for External Developers
+
+External developers can add a skill with minimal effort using the prompt template:
+
+1. Fork this repo
+2. Put your script in `skills/<skill-name>/`
+3. Fill in the 3-line prompt from [`templates/ADD-SKILL-PROMPT.md`](templates/ADD-SKILL-PROMPT.md)
+4. @copilot with the prompt — agent handles all the conversion
+
+For the full manual conversion process, see the section below.
+
+---
+
 ## 🔧 Converting a User Script into a KunLib Skill
 
 When a user gives you any functional script (Python, R wrapper, shell pipeline,
