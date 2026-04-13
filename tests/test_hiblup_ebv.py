@@ -66,7 +66,77 @@ class TestParser:
     def test_default_trait_pos(self):
         parser = _run.__kunlib_meta__.build_parser()
         args = parser.parse_args(["--output", "/tmp/x"])
-        assert args.trait_pos == 2
+        assert args.trait_pos == 4
+
+    def test_parse_phe_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--phe-file", "my_phe.csv"])
+        assert args.phe_file == "my_phe.csv"
+
+    def test_default_phe_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x"])
+        assert args.phe_file == "phe.csv"
+
+    def test_parse_geno_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--geno-file", "g.csv"])
+        assert args.geno_file == "g.csv"
+
+    def test_default_geno_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x"])
+        assert args.geno_file == "geno.csv"
+
+    def test_parse_sel_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--sel-file", "s.csv"])
+        assert args.sel_file == "s.csv"
+
+    def test_default_sel_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x"])
+        assert args.sel_file == "sel_id.csv"
+
+    def test_parse_ref_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--ref-file", "r.csv"])
+        assert args.ref_file == "r.csv"
+
+    def test_default_ref_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x"])
+        assert args.ref_file == "ref_id.csv"
+
+    def test_parse_threads(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--threads", "8"])
+        assert args.threads == 8
+
+    def test_default_threads(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x"])
+        assert args.threads == 32
+
+    def test_parse_plink_format(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--plink-format"])
+        assert args.plink_format is True
+
+    def test_default_plink_format(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x"])
+        assert args.plink_format is False
+
+    def test_parse_fast_demo(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--fast-demo"])
+        assert args.fast_demo is True
+
+    def test_default_fast_demo(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x"])
+        assert args.fast_demo is False
 
 
 # ---------------------------------------------------------------------------

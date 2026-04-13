@@ -1,43 +1,82 @@
-#!/usr/bin/env Rscript
-# filegenerator.r — Generate synthetic demo data for hiblup-ebv skill
-# Usage: Rscript filegenerator.r <output_dir>
+suppressPackageStartupMessages(library(data.table))
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 1) {
-  stop("Usage: Rscript filegenerator.r <output_dir>")
+parse_args <- function(args) {
+  get_arg <- function(flag, default = NULL) {
+    idx <- match(flag, args)
+    if (is.na(idx) || idx == length(args)) return(default)
+    args[[idx + 1]]
+  }
+  list(
+    output = get_arg("--output", "."),
+    n_ind = as.integer(get_arg("--n-ind", "60")),
+    n_snp = as.integer(get_arg("--n-snp", "80")),
+    seed = as.integer(get_arg("--seed", "123"))
+  )
 }
 
-output_dir <- args[1]
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+generate_demo <- function(output_dir = ".", n_ind = 60, n_snp = 80, seed = 123) {
+  set.seed(seed)
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-set.seed(42)
+  ids <- sprintf("ID%04d", seq_len(n_ind))
+  snp_names <- sprintf("SNP%03d", seq_len(n_snp))
 
-n_animals  <- 100
-n_markers  <- 50
-n_ref      <- 70
-n_sel      <- 30
+  geno_mat <- matrix(sample(0:2, n_ind * n_snp, replace = TRUE, prob = c(0.3, 0.5, 0.2)), nrow = n_ind, ncol = n_snp)
+  colnames(geno_mat) <- snp_names
+  geno_dt <- as.data.table(geno_mat)
+  geno_dt <- cbind(data.table(ID = ids), geno_dt)
 
-# Generate IDs
-ids <- paste0("ANIMAL_", sprintf("%03d", 1:n_animals))
+  sire <- sample(c(0L, seq_len(max(2L, floor(n_ind / 4)))), n_ind, replace = TRUE)
+  dam <- sample(c(0L, seq_len(max(2L, floor(n_ind / 3)))), n_ind, replace = TRUE)
 
-# Phenotype: ID + Trait1
-trait1 <- round(rnorm(n_animals, mean = 100, sd = 15), 2)
-phe <- data.frame(ID = ids, Trait1 = trait1)
-write.csv(phe, file.path(output_dir, "phe.csv"), row.names = FALSE)
+  genetic_signal <- rowSums(geno_mat[, seq_len(min(10, n_snp)), drop = FALSE])
+  phe1 <- as.numeric(scale(genetic_signal + rnorm(n_ind, sd = 1.5)))
+  phe2 <- as.numeric(scale(genetic_signal * 0.7 + rnorm(n_ind, sd = 2.0)))
 
-# Genotype: ID + marker columns (0/1/2)
-geno_mat <- matrix(sample(0:2, n_animals * n_markers, replace = TRUE),
-                   nrow = n_animals, ncol = n_markers)
-colnames(geno_mat) <- paste0("SNP_", 1:n_markers)
-geno <- data.frame(ID = ids, geno_mat)
-write.csv(geno, file.path(output_dir, "geno.csv"), row.names = FALSE)
+  phe_dt <- data.table(
+    ID = ids,
+    sire = sire,
+    dam = dam,
+    phe1 = phe1,
+    phe2 = phe2,
+    FamilyID = paste0("F", sprintf("%03d", sample(seq_len(max(3L, floor(n_ind / 2))), n_ind, replace = TRUE)))
+  )
 
-# Reference IDs (first n_ref)
-ref_ids <- data.frame(ID = ids[1:n_ref])
-write.csv(ref_ids, file.path(output_dir, "ref_id.csv"), row.names = FALSE)
+  ref_n <- max(10L, floor(n_ind * 0.5))
+  ref_id <- sample(ids, ref_n)
+  sel_id <- setdiff(ids, ref_id)
 
-# Selection IDs (last n_sel)
-sel_ids <- data.frame(ID = ids[(n_animals - n_sel + 1):n_animals])
-write.csv(sel_ids, file.path(output_dir, "sel_id.csv"), row.names = FALSE)
+  phe_dt[!ID %in% ref_id, phe1 := NA_real_]
+  phe_dt[!ID %in% ref_id, phe2 := NA_real_]
 
-cat("Demo data generated in:", output_dir, "\n")
+  fwrite(geno_dt, file.path(output_dir, "geno.csv"), sep = ",", quote = FALSE)
+  fwrite(phe_dt, file.path(output_dir, "phe.csv"), sep = ",", quote = FALSE, na = "NA")
+  fwrite(data.table(ID = ref_id), file.path(output_dir, "ref_id.csv"), sep = ",", quote = FALSE)
+  fwrite(data.table(ID = sel_id), file.path(output_dir, "sel_id.csv"), sep = ",", quote = FALSE)
+
+  invisible(list(
+    geno = file.path(output_dir, "geno.csv"),
+    phe = file.path(output_dir, "phe.csv"),
+    ref_id = file.path(output_dir, "ref_id.csv"),
+    sel_id = file.path(output_dir, "sel_id.csv")
+  ))
+}
+
+main <- function() {
+  args <- parse_args(commandArgs(trailingOnly = TRUE))
+
+  fast_mode <- identical(Sys.getenv("HIBLUP_EBV_FAST_DEMO", unset = ""), "1")
+  if (fast_mode) {
+    args$n_ind <- min(args$n_ind, 24L)
+    args$n_snp <- min(args$n_snp, 24L)
+  }
+
+  generate_demo(
+    output_dir = args$output,
+    n_ind = args$n_ind,
+    n_snp = args$n_snp,
+    seed = args$seed
+  )
+}
+
+main()
