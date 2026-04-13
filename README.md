@@ -33,7 +33,10 @@ result = adapter.run_skill("hiblup-ebv", {"demo": True, "output": "/tmp/out"})
 
 ## Add a Skill
 
-See [AGENTS.md](AGENTS.md) §"Converting a User Script into a KunLib Skill".
+**最简方式（推荐）：** Fork → 放脚本 → 填 3 行 prompt → agent 自动完成改造。
+详见 [templates/ADD-SKILL-PROMPT.md](templates/ADD-SKILL-PROMPT.md)。
+
+**手动改造：** 参见 [AGENTS.md](AGENTS.md) §"Converting a User Script into a KunLib Skill"。
 
 ## License
 
