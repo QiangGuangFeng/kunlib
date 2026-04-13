@@ -2,9 +2,10 @@
 
 开发者在技能主脚本中使用 @skill 装饰器即可完成:
   1. 元信息注册（name, tags, trigger_keywords, params...）
-  2. argparse 自动构建
-  3. CLI 入口 (run_cli)
-  4. 被 kunlib CLI / agent adapter 发现和调用
+  2. argparse 自动构建（自动注入 --input / --output）
+  3. 标准输出目录结构自动创建
+  4. CLI 入口 (run_cli)
+  5. 被 kunlib CLI / agent adapter 发现和调用
 """
 from __future__ import annotations
 
@@ -20,12 +21,21 @@ from typing import Any, Callable
 from kunlib.result import KunResult
 
 
+# 框架自动创建的标准子目录名
+STANDARD_DIRS = ("work", "tables", "figures", "logs", "reproducibility")
+
+# 框架保留的参数名，开发者在 params 中声明会被静默跳过
+_RESERVED_PARAMS = {"input", "output"}
+
+
 @dataclass
 class Param:
     """技能参数声明。
 
     name 使用 kebab-case (e.g. "trait-pos")，与 CLI flag 一致。
     argparse 会自动将其转为 snake_case 属性 (args.trait_pos)。
+
+    注意: "input" 和 "output" 由框架自动注入，不需要声明。
     """
     name: str
     type: type = str
@@ -54,12 +64,24 @@ class SkillMeta:
     entry_func: Callable | None = None
 
     def build_parser(self) -> argparse.ArgumentParser:
-        """从 self.params 自动构建 ArgumentParser。"""
+        """从 self.params 自动构建 ArgumentParser。
+
+        框架自动注入:
+          --input   输入文件或目录（可选，demo 模式下可省略）
+          --output  输出目录（必需）
+        """
         parser = argparse.ArgumentParser(
             prog=f"kunlib run {self.name}",
             description=self.description,
         )
+        # ---- 框架强制参数 ----
+        parser.add_argument("--input", help="Input file or directory")
+        parser.add_argument("--output", required=True, help="Output directory (required)")
+
+        # ---- 技能自定义参数 ----
         for p in self.params:
+            if p.name in _RESERVED_PARAMS:
+                continue  # 由框架注入，跳过
             flag = f"--{p.name}"
             if p.is_flag:
                 parser.add_argument(flag, action="store_true", default=False, help=p.help)
@@ -70,18 +92,57 @@ class SkillMeta:
                 parser.add_argument(flag, **kw)
         return parser
 
-    def run_cli(self, argv: list[str] | None = None) -> KunResult | None:
-        """解析命令行参数 → 执行 entry_func → 保存并打印结果。
+    def run_cli(self, argv: list[str] | None = None) -> KunResult:
+        """解析命令行参数 → 准备标准目录 → 执行 entry_func → 保存结果。
 
-        脚本的 if __name__ == "__main__" 直接调用此方法即可。
-        argv=None 时读 sys.argv，测试时可传入自定义参数列表。
+        框架自动创建标准输出目录结构:
+          output/
+          ├── work/              中间/临时文件
+          ├── tables/            最终表格
+          ├── figures/           最终图片
+          ├── logs/              运行日志
+          ├── reproducibility/   复现指令
+          └── result.json        框架自动写
+
+        技能通过 args.output_dir / args.work_dir / args.tables_dir /
+        args.figures_dir / args.logs_dir / args.repro_dir 访问这些目录。
         """
         parser = self.build_parser()
         args = parser.parse_args(argv)
+
+        # ---- 创建标准目录结构并注入到 args ----
+        output_dir = Path(args.output).resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        dirs = {}
+        for d in STANDARD_DIRS:
+            p = output_dir / d
+            p.mkdir(exist_ok=True)
+            dirs[d] = p
+
+        args.output_dir = output_dir
+        args.work_dir = dirs["work"]
+        args.tables_dir = dirs["tables"]
+        args.figures_dir = dirs["figures"]
+        args.logs_dir = dirs["logs"]
+        args.repro_dir = dirs["reproducibility"]
+
+        # ---- 执行技能 ----
         result = self.entry_func(args)
-        if isinstance(result, KunResult):
-            result.save()
-            print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+
+        # ---- 校验返回值 ----
+        if not isinstance(result, KunResult):
+            raise TypeError(
+                f"[{self.name}] run() must return KunResult, got {type(result).__name__}"
+            )
+
+        # 自动补全 output_dir
+        if result.output_dir is None:
+            result.output_dir = output_dir
+
+        # ---- 保存 result.json + 打印摘要 ----
+        result.save()
+        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
         return result
 
 
@@ -113,6 +174,8 @@ def skill(
 ):
     """技能注册装饰器 —— 开发者唯一需要使用的接口。
 
+    --input 和 --output 由框架自动注入，开发者只需声明技能特有的参数。
+
     用法::
 
         @skill(
@@ -120,12 +183,20 @@ def skill(
             version="0.1.0",
             description="GBLUP breeding values via HI-BLUP",
             params=[
-                Param("input", help="Input directory"),
-                Param("output", required=True, help="Output directory"),
                 Param("demo", is_flag=True, help="Run with synthetic data"),
+                Param("trait-pos", type=int, default=2, help="Trait column"),
             ],
         )
         def run(args: argparse.Namespace) -> KunResult:
+            # 框架自动提供:
+            #   args.input       输入路径（可选）
+            #   args.output      输出路径字符串
+            #   args.output_dir  输出 Path 对象
+            #   args.work_dir    中间文件目录
+            #   args.tables_dir  最终表格目录
+            #   args.figures_dir 最终图片目录
+            #   args.logs_dir    日志目录
+            #   args.repro_dir   复现指令目录
             ...
 
         if __name__ == "__main__":

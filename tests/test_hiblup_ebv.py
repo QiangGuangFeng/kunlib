@@ -44,7 +44,7 @@ class TestRegistration:
 
 
 # ---------------------------------------------------------------------------
-# CLI parser
+# CLI parser — --input and --output auto-injected by framework
 # ---------------------------------------------------------------------------
 class TestParser:
     def test_parse_demo(self):
@@ -52,6 +52,11 @@ class TestParser:
         args = parser.parse_args(["--output", "/tmp/x", "--demo"])
         assert args.output == "/tmp/x"
         assert args.demo is True
+
+    def test_has_input_flag(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--input", "/data"])
+        assert args.input == "/data"
 
     def test_parse_trait_pos(self):
         parser = _run.__kunlib_meta__.build_parser()

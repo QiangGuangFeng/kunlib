@@ -17,7 +17,7 @@ invoked via CLI, direct `python script.py`, or programmatically by an agent.
 git clone https://github.com/kzy599/kunlib.git && cd kunlib
 pip install -e .
 kunlib list
-kunlib run <skill> --demo
+kunlib run <skill> --demo --output /tmp/out
 ```
 
 ## Commands
@@ -25,7 +25,7 @@ kunlib run <skill> --demo
 | Command | Purpose |
 |---------|---------|
 | `kunlib list` | List all registered skills |
-| `kunlib run <skill> --demo` | Run skill with demo data |
+| `kunlib run <skill> --demo --output /tmp/out` | Run skill with demo data |
 | `kunlib run <skill> --input <path> --output <dir>` | Run with real data |
 | `python skills/<name>/<script>.py --demo --output /tmp/out` | Direct execution |
 | `kunlib catalog` | Regenerate `skills/catalog.json` |
@@ -37,7 +37,7 @@ kunlib run <skill> --demo
 kunlib/
 ├── kunlib/              # SDK package
 │   ├── __init__.py      # Exports: skill, Param, KunResult
-│   ├── skill.py         # @skill decorator + SkillMeta + argparse builder
+│   ├── skill.py         # @skill decorator + SkillMeta + auto dir setup
 │   ├── result.py        # KunResult standard output
 │   ├── registry.py      # Auto-discovery from skills/ directory
 │   ├── cli.py           # CLI entry point
@@ -66,9 +66,47 @@ Every skill has two required files:
 The script MUST:
 - `from kunlib import skill, Param, KunResult`
 - Use `@skill(...)` decorator on its main `run()` function
-- Declare all CLI params via `Param(...)` in the decorator
+- Only declare skill-specific params (`--input`/`--output` auto-injected by framework)
 - Return a `KunResult` from `run()`
 - Have `if __name__ == "__main__": run.__kunlib_meta__.run_cli()`
+
+## Framework Auto-Injected Features
+
+### Auto parameters
+
+`--input` and `--output` are **automatically injected** by the framework. Do NOT
+declare them in `params=[...]`. `--output` is always required.
+
+### Auto directory structure
+
+When `run_cli()` is called, the framework creates the following directories
+under `--output` **before** calling `run()`:
+
+```
+output/
+├── work/              # Intermediate/temp files (R workdir, PLINK outputs, etc.)
+├── tables/            # Final tabular results
+├── figures/           # Final plots/images
+├── logs/              # Run logs
+├── reproducibility/   # Commands to reproduce
+└── result.json        # Auto-written by framework after run() returns
+```
+
+These are injected into `args` and accessible as:
+
+| `args` attribute | Path | Purpose |
+|------------------|------|---------|
+| `args.output_dir` | `output/` | Top-level output dir (Path object) |
+| `args.work_dir` | `output/work/` | Intermediate files |
+| `args.tables_dir` | `output/tables/` | Final tables |
+| `args.figures_dir` | `output/figures/` | Final figures |
+| `args.logs_dir` | `output/logs/` | Logs |
+| `args.repro_dir` | `output/reproducibility/` | Reproducibility |
+
+### Auto result.json
+
+`result.json` is written automatically by the framework after `run()` returns.
+The skill does NOT need to call `result.save()`.
 
 ## Skill Script Template
 
@@ -92,33 +130,37 @@ SKILL_DIR = Path(__file__).resolve().parent
     trigger_keywords=["keyword1", "keyword2"],
     emoji="🧬",
     params=[
-        Param("input", help="Input file or directory"),
-        Param("output", required=True, help="Output directory"),
+        # --input and --output are auto-injected, do NOT list here
         Param("demo", is_flag=True, help="Run with synthetic data"),
         # add more Param(...) as needed
     ],
 )
 def run(args: argparse.Namespace) -> KunResult:
-    output_dir = Path(args.output).resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Framework provides: args.output_dir, args.work_dir, args.tables_dir,
+    #                     args.figures_dir, args.logs_dir, args.repro_dir
 
     if args.demo:
-        # load from SKILL_DIR / "demo" / ...
+        # generate or load demo data into args.work_dir
         mode = "demo"
     else:
         # load from args.input
         mode = "input"
 
-    # ... your computation ...
+    # ... your computation, write intermediate files to args.work_dir ...
+    # ... copy final tables to args.tables_dir ...
+    # ... copy final figures to args.figures_dir ...
 
     return KunResult(
         skill_name="your-skill-name",
         skill_version="0.1.0",
         mode=mode,
-        output_dir=output_dir,
+        output_dir=args.output_dir,
         summary={"key_metric": 42},
-        files={"tables": [output_dir / "tables" / "results.csv"]},
-        report_path=output_dir / "report.md",
+        files={
+            "tables": [args.tables_dir / "results.csv"],
+            "figures": [args.figures_dir / "plot.png"],
+        },
+        report_path=args.output_dir / "report.md",
     )
 
 if __name__ == "__main__":
@@ -166,9 +208,10 @@ Take the user's core logic and wrap it:
 from kunlib import skill, Param, KunResult
 
 # 1. Move the user's core logic into a plain function
-def compute_something(input_path, output_dir, param1, param2):
+def compute_something(input_path, work_dir, tables_dir, param1, param2):
     # ... user's original code, minimally modified ...
-    # ... writes output files to output_dir ...
+    # ... write intermediate files to work_dir ...
+    # ... copy final results to tables_dir ...
     return {"n_results": 42}  # summary dict
 
 # 2. Declare the skill with @skill decorator
@@ -177,17 +220,13 @@ def compute_something(input_path, output_dir, param1, param2):
     version="0.1.0",
     description="...",
     params=[
-        Param("input", help="..."),
-        Param("output", required=True, help="..."),
+        # --input and --output auto-injected, do NOT list
         Param("demo", is_flag=True, help="..."),
         Param("param1", type=int, default=10, help="..."),
         Param("param2", type=float, default=0.05, help="..."),
     ],
 )
 def run(args: argparse.Namespace) -> KunResult:
-    output_dir = Path(args.output).resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     if args.demo:
         input_path = SKILL_DIR / "demo" / "sample_input.csv"
         mode = "demo"
@@ -195,10 +234,11 @@ def run(args: argparse.Namespace) -> KunResult:
         input_path = Path(args.input)
         mode = "input"
 
-    # 3. Call the user's core logic
+    # 3. Call the user's core logic with framework dirs
     summary = compute_something(
         input_path=input_path,
-        output_dir=output_dir,
+        work_dir=args.work_dir,
+        tables_dir=args.tables_dir,
         param1=args.param1,
         param2=args.param2,
     )
@@ -208,9 +248,10 @@ def run(args: argparse.Namespace) -> KunResult:
         skill_name="skill-name",
         skill_version="0.1.0",
         mode=mode,
-        output_dir=output_dir,
+        output_dir=args.output_dir,
         summary=summary,
-        report_path=output_dir / "report.md",
+        files={"tables": [args.tables_dir / "output.csv"]},
+        report_path=args.output_dir / "report.md",
     )
 
 if __name__ == "__main__":
@@ -221,12 +262,13 @@ if __name__ == "__main__":
 
 | Original Script Has | KunLib Conversion |
 |---------------------|-------------------|
-| `argparse` with `--input`/`--output` | Map to `Param("input", ...)` / `Param("output", required=True, ...)` |
+| `argparse` with `--input`/`--output` | Remove — framework auto-injects them |
 | Hardcoded input path | Replace with `args.input` or `SKILL_DIR / "demo" / ...` |
-| Hardcoded output path | Replace with `args.output` |
+| Hardcoded output path | Replace with `args.tables_dir` / `args.figures_dir` |
+| Intermediate files | Write to `args.work_dir` |
 | `print()` results | Keep prints, but also `return KunResult(summary={...})` |
-| Writes files to disk | Write to `output_dir`, list in `KunResult.files` dict |
-| R/shell subprocess | Keep as-is, use `subprocess.run(check=True)` |
+| Writes files to disk | Final → `tables_dir`/`figures_dir`, temp → `work_dir` |
+| R/shell subprocess | Keep as-is, set `cwd=args.work_dir` |
 | No demo mode | Add `Param("demo", is_flag=True)` + synthetic data in `demo/` |
 | Magic numbers | Extract to `Param(...)` with sensible defaults |
 | `sys.exit()` on error | Raise exceptions instead; let kunlib handle exit codes |
@@ -256,6 +298,9 @@ def test_demo_mode(tmp_path):
     )
     assert result.returncode == 0
     assert (tmp_path / "result.json").exists()
+    # Framework auto-creates these dirs
+    assert (tmp_path / "work").is_dir()
+    assert (tmp_path / "tables").is_dir()
 ```
 
 ### Step 7: Verify
@@ -270,13 +315,17 @@ kunlib list
 # Does kunlib run it?
 kunlib run <name> --demo --output /tmp/test
 
+# Standard dirs created?
+ls /tmp/test/
+# → work/  tables/  figures/  logs/  reproducibility/  result.json  report.md
+
 # Do tests pass?
-pytest skills/<name>/tests/ -v
+pytest tests/ -v
 ```
 
 ## Safety Boundaries
 
 1. **Local-first**: No data uploads without explicit consent
 2. **Disclaimer**: Every result.json includes the KunLib disclaimer
-3. **Reproducibility**: Skills should log commands to reproducibility/ dir
+3. **Reproducibility**: Skills should log commands to `args.repro_dir`
 4. **No hallucinated science**: Parameters must trace to cited methods
