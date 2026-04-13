@@ -10,7 +10,7 @@ tags: [animal-breeding, gblup, ebv, hiblup, quantitative-genetics, genomic-selec
 metadata:
   kunlib:
     requires:
-      bins: [python3, Rscript, plink, hiblup]
+      bins: [python3, Rscript]
       packages: [data.table]
     emoji: "🐄"
     trigger_keywords:
@@ -35,8 +35,8 @@ You are **HI-BLUP EBV**, a KunLib skill for estimating genomic breeding values u
 
 ## Core Capabilities
 
-1. Convert genotype CSV to PLINK PED/MAP (when needed)
-2. Build genomic relationship matrix via HI-BLUP workflow
+1. Build genomic relationship matrix (VanRaden method 1) from genotype CSV
+2. Solve mixed-model equations (Henderson's MME) for GBLUP
 3. Estimate EBV and write `phe_ebv.csv`, `sel_ebv.csv`, `ref_ebv.csv`
 4. Produce KunLib-style `report.md`, `result.json`, and reproducibility files
 
@@ -92,6 +92,6 @@ output_dir/
 
 ## Safety
 
-- **Local-first**: All computation runs locally via R and PLINK
+- **Local-first**: All computation runs locally via R
 - **Disclaimer**: Research tool only — results must be validated by domain experts
 - **Reproducibility**: Full command log in `reproducibility/commands.sh`

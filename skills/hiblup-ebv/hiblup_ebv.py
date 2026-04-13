@@ -21,7 +21,7 @@ REQUIRED_FILES = ["phe.csv", "geno.csv", "sel_id.csv", "ref_id.csv"]
 def _check_bins() -> dict[str, str | None]:
     """Check availability of required external binaries."""
     bins: dict[str, str | None] = {}
-    for name in ("Rscript", "plink"):
+    for name in ("Rscript",):
         bins[name] = shutil.which(name)
     return bins
 
@@ -103,7 +103,7 @@ def _write_report(output_dir: Path, mode: str, summary: dict) -> Path:
     ],
     chaining_partners=["kinship-matrix", "gwas-prs"],
     input_formats=["csv-dir (phe.csv + geno.csv + sel_id.csv + ref_id.csv)"],
-    requires_bins=["python3", "Rscript", "plink", "hiblup"],
+    requires_bins=["python3", "Rscript"],
     emoji="🐄",
     params=[
         Param("input", help="Input directory containing phe.csv, geno.csv, sel_id.csv, ref_id.csv"),
