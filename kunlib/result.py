@@ -17,19 +17,37 @@ DISCLAIMER = (
 
 @dataclass
 class KunResult:
-    """技能标准返回值。"""
+    """技能标准返回值。
+
+    files 字段是灵活的分类字典，key 由技能自定义，例如:
+        files = {
+            "tables":   [Path("tables/phe_ebv.csv"), ...],
+            "figures":  [Path("figures/manhattan.png"), ...],
+            "matrices": [Path("matrices/grm.bin"), ...],
+            "logs":     [Path("logs/plink.log"), ...],
+        }
+    """
     skill_name: str
     skill_version: str
-    mode: str = "input"                          # "input" | "demo"
+    mode: str = "input"
     output_dir: Path | None = None
     summary: dict[str, Any] = field(default_factory=dict)
     data: dict[str, Any] = field(default_factory=dict)
-    figures: list[Path] = field(default_factory=list)
-    tables: list[Path] = field(default_factory=list)
+    files: dict[str, list[Path]] = field(default_factory=dict)
     report_path: Path | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为 dict（用于 JSON 输出和 agent 响应）。"""
+        serialized_files: dict[str, list[str]] = {}
+        for category, paths in self.files.items():
+            serialized: list[str] = []
+            for f in paths:
+                try:
+                    serialized.append(str(f.relative_to(self.output_dir)) if self.output_dir else str(f))
+                except ValueError:
+                    serialized.append(str(f))
+            serialized_files[category] = serialized
+
         return {
             "skill": self.skill_name,
             "version": self.skill_version,
@@ -38,8 +56,7 @@ class KunResult:
             "output_dir": str(self.output_dir) if self.output_dir else None,
             "summary": self.summary,
             "data": self.data,
-            "figures": [str(f) for f in self.figures],
-            "tables": [str(t) for t in self.tables],
+            "files": serialized_files,
             "report": str(self.report_path) if self.report_path else None,
             "disclaimer": DISCLAIMER,
         }
