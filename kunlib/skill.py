@@ -46,6 +46,25 @@ class Param:
 
 
 @dataclass
+class SkillRequires:
+    """技能依赖声明。"""
+    bins: list[str] = field(default_factory=list)
+    r_packages: list[str] = field(default_factory=list)
+    python_packages: list[str] = field(default_factory=list)
+    bioc_packages: list[str] = field(default_factory=list)
+
+
+@dataclass
+class IOField:
+    """输入/输出文件声明。"""
+    name: str                                                        # 文件名或 pattern
+    format: str = ""                                                 # csv, vcf, bed, png 等
+    required_fields: list[str] = field(default_factory=list)        # 必需字段/列名
+    dir: str = ""                                                    # 输出子目录 (tables, figures 等)
+    description: str = ""
+
+
+@dataclass
 class SkillMeta:
     """技能元信息，由 @skill 装饰器自动填充。"""
     name: str
@@ -56,12 +75,19 @@ class SkillMeta:
     trigger_keywords: list[str] = field(default_factory=list)
     chaining_partners: list[str] = field(default_factory=list)
     input_formats: list[str] = field(default_factory=list)
-    requires_bins: list[str] = field(default_factory=list)
+    requires: SkillRequires = field(default_factory=SkillRequires)
     emoji: str = "🧬"
     params: list[Param] = field(default_factory=list)
+    input_schema: list[IOField] = field(default_factory=list)
+    output_schema: list[IOField] = field(default_factory=list)
     script_path: Path | None = None
     has_demo: bool = False
     entry_func: Callable | None = None
+
+    @property
+    def requires_bins(self) -> list[str]:
+        """向后兼容：返回 requires.bins。"""
+        return self.requires.bins
 
     def build_parser(self) -> argparse.ArgumentParser:
         """从 self.params 自动构建 ArgumentParser。
@@ -169,6 +195,9 @@ def skill(
     chaining_partners: list[str] | None = None,
     input_formats: list[str] | None = None,
     requires_bins: list[str] | None = None,
+    requires: SkillRequires | None = None,
+    input_schema: list[IOField] | None = None,
+    output_schema: list[IOField] | None = None,
     emoji: str = "🧬",
     params: list[Param] | None = None,
 ):
@@ -203,6 +232,17 @@ def skill(
             run.__kunlib_meta__.run_cli()
     """
     def decorator(func: Callable) -> Callable:
+        # Merge requires_bins (legacy) into requires.bins
+        effective_requires = requires if requires is not None else SkillRequires()
+        if requires_bins:
+            merged_bins = list(dict.fromkeys(effective_requires.bins + requires_bins))
+            effective_requires = SkillRequires(
+                bins=merged_bins,
+                r_packages=effective_requires.r_packages,
+                python_packages=effective_requires.python_packages,
+                bioc_packages=effective_requires.bioc_packages,
+            )
+
         meta = SkillMeta(
             name=name,
             version=version,
@@ -212,9 +252,11 @@ def skill(
             trigger_keywords=trigger_keywords or [],
             chaining_partners=chaining_partners or [],
             input_formats=input_formats or [],
-            requires_bins=requires_bins or [],
+            requires=effective_requires,
             emoji=emoji,
             params=params or [],
+            input_schema=input_schema or [],
+            output_schema=output_schema or [],
             script_path=Path(inspect.getfile(func)).resolve(),
             has_demo=any(p.name == "demo" and p.is_flag for p in (params or [])),
             entry_func=func,

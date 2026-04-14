@@ -18,6 +18,16 @@ metadata:
     chaining_partners: []
     input_formats:
       - csv
+    input_schema:
+      - name: input.csv
+        format: csv
+        required_fields: [ID]
+        description: 输入文件描述
+    output_schema:
+      - name: result.csv
+        format: csv
+        dir: tables
+        description: 输出文件描述
 ---
 
 # 🧬 Skill Name

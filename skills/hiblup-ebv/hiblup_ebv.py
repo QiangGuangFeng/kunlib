@@ -7,7 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from kunlib import skill, Param, KunResult
+from kunlib import skill, Param, KunResult, SkillRequires, IOField
 from kunlib.common.report import generate_report_header, generate_report_footer
 from kunlib.common.checksums import sha256_file
 
@@ -121,7 +121,21 @@ def _write_report(output_dir: Path, mode: str, summary: dict) -> Path:
     ],
     chaining_partners=["kinship-matrix", "gwas-prs"],
     input_formats=["csv-dir (phe.csv + geno.csv + sel_id.csv + ref_id.csv)"],
-    requires_bins=["python3", "Rscript", "plink", "hiblup"],
+    requires=SkillRequires(
+        bins=["python3", "Rscript", "plink", "hiblup"],
+        r_packages=["data.table"],
+    ),
+    input_schema=[
+        IOField(name="phe.csv", format="csv", required_fields=["ID"], description="表型文件"),
+        IOField(name="geno.csv", format="csv", required_fields=["ID"], description="0/1/2基因型矩阵"),
+        IOField(name="sel_id.csv", format="csv", required_fields=["ID"], description="选择集 ID"),
+        IOField(name="ref_id.csv", format="csv", required_fields=["ID"], description="参考集 ID"),
+    ],
+    output_schema=[
+        IOField(name="phe_ebv.csv", dir="tables", description="全部个体EBV"),
+        IOField(name="sel_ebv.csv", dir="tables", description="选择集EBV"),
+        IOField(name="ref_ebv.csv", dir="tables", description="参考集EBV"),
+    ],
     emoji="🐄",
     params=[
         # --input 和 --output 由框架自动注入，不需要声明

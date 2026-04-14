@@ -35,7 +35,32 @@ def generate_catalog(
                 "chaining_partners": m.chaining_partners,
                 "input_formats": m.input_formats,
                 "has_demo": m.has_demo,
-                "requires_bins": m.requires_bins,
+                "requires": {
+                    "bins": m.requires.bins,
+                    "r_packages": m.requires.r_packages,
+                    "python_packages": m.requires.python_packages,
+                    "bioc_packages": m.requires.bioc_packages,
+                },
+                "input_schema": [
+                    {
+                        "name": f.name,
+                        "format": f.format,
+                        "required_fields": f.required_fields,
+                        "dir": f.dir,
+                        "description": f.description,
+                    }
+                    for f in m.input_schema
+                ],
+                "output_schema": [
+                    {
+                        "name": f.name,
+                        "format": f.format,
+                        "required_fields": f.required_fields,
+                        "dir": f.dir,
+                        "description": f.description,
+                    }
+                    for f in m.output_schema
+                ],
                 "params": [
                     {"name": p.name, "type": _param_type_name(p),
                      "required": p.required, "default": p.default, "help": p.help, "is_flag": p.is_flag}
