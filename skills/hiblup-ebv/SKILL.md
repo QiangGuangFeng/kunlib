@@ -95,7 +95,7 @@ python skills/hiblup-ebv/hiblup_ebv.py --input /path/to/data --output /tmp/hiblu
 | `python3` | ≥ 3.9 | `conda install python=3.9` | KunLib 框架需要 |
 | `Rscript` | ≥ 4.0 | `conda install -c conda-forge r-base` | R 脚本运行环境 |
 | `plink` | 1.9 | `conda install -c bioconda plink` | 基因型格式转换 |
-| `hiblup` | — | Manual download: https://hiblup.github.io/ | ⚠️ 需用户自行下载安装，请参阅官网说明 |
+| `hiblup` | — | Manual download from official website| ⚠️ 需用户自行下载安装，请参阅官网说明 |
 
 ### R Packages
 
