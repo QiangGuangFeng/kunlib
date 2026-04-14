@@ -14,7 +14,7 @@ import functools
 import inspect
 import json
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Callable
 
@@ -236,12 +236,7 @@ def skill(
         effective_requires = requires if requires is not None else SkillRequires()
         if requires_bins:
             merged_bins = list(dict.fromkeys(effective_requires.bins + requires_bins))
-            effective_requires = SkillRequires(
-                bins=merged_bins,
-                r_packages=effective_requires.r_packages,
-                python_packages=effective_requires.python_packages,
-                bioc_packages=effective_requires.bioc_packages,
-            )
+            effective_requires = replace(effective_requires, bins=merged_bins)
 
         meta = SkillMeta(
             name=name,
