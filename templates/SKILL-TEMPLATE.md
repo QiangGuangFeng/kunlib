@@ -9,6 +9,9 @@ metadata:
   kunlib:
     requires:
       bins: [python3]
+      r_packages: []
+      python_packages: []
+      bioc_packages: []
     emoji: "🧬"
     trigger_keywords:
       - keyword that routes to this skill
@@ -57,6 +60,52 @@ python skills/your-skill-name/your_skill.py --input <file> --output <dir>
 | `--input` | path | — | Input file or directory |
 | `--output` | path | required | Output directory |
 | `--demo` | flag | false | Run with synthetic data |
+
+## Dependencies
+
+List every external dependency so users can install them before running the skill.
+
+### System Binaries
+
+| Binary | Version | Install Method | Notes |
+|--------|---------|----------------|-------|
+| `python3` | ≥ 3.9 | `conda install python=3.9` | Required by KunLib framework |
+
+### R Packages
+
+| Package | Version | Install Method | Notes |
+|---------|---------|----------------|-------|
+| — | — | — | *(remove this row and add entries if your skill uses R)* |
+
+### Python Packages
+
+| Package | Version | Install Method | Notes |
+|---------|---------|----------------|-------|
+| — | — | — | *(remove this row and add entries if your skill uses Python packages)* |
+
+### Bioconductor Packages
+
+| Package | Version | Install Method | Notes |
+|---------|---------|----------------|-------|
+| — | — | — | *(remove this row and add entries if your skill uses Bioconductor)* |
+
+> **Install Method** should be one of:
+>
+> | Category | Example |
+> |----------|---------|
+> | conda / conda-forge / Bioconda | `conda install -c bioconda samtools` |
+> | pip / PyPI | `pip install pandas` |
+> | CRAN | `install.packages("data.table")` |
+> | Bioconductor | `BiocManager::install("DESeq2")` |
+> | GitHub (R) | `remotes::install_github("author/pkg")` — include full URL |
+> | GitHub (CLI/C++) | `git clone https://github.com/... && make install` |
+> | URL direct download | `wget https://example.com/tool-v1.0.tar.gz` |
+> | System package manager | `apt install libhts-dev` / `brew install htslib` |
+> | Manual download (licensed) | Provide official URL and note license restrictions |
+>
+> ⚠️ If a dependency requires **manual download due to licensing or commercial
+> restrictions** (e.g., ASReml, FImpute, commercial chip annotation tools),
+> clearly state this and provide the official download URL.
 
 ## Output Structure
 
