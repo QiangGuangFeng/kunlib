@@ -146,7 +146,7 @@ python skills/lagm-mating/lagm_mating.py \
 | `data.table` | — | `install.packages("data.table")` | 高性能数据读写 |
 | `remotes` | — | `install.packages("remotes")` | 安装 GitHub 包所需 |
 | `visPedigree` | — | `remotes::install_github("luansheng/visPedigree")` | 系谱矩阵计算（pedigree模式需要） |
-| `lagm` | — | `remotes::install_github("kzy599/LAGM", subdir = "lagmRcpp")` | ⚠️ 核心配种优化包；如无法下载请联系 kangziyi1998@163.com 手动安装 |
+| `lagm` | — | `remotes::install_github("kzy599/LAGM", subdir = "lagmRcpp")` | ⚠️ 核心配种优化包；GitHub: https://github.com/kzy599/LAGM ；如仓库不可访问请联系 kangziyi1998@163.com 获取手动安装包 |
 | `AlphaSimR` | — | `install.packages("AlphaSimR")` | 仅 demo 模式需要（生成合成数据） |
 
 ### Python Packages

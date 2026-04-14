@@ -282,11 +282,19 @@ def run(args: argparse.Namespace) -> KunResult:
         "# Reproduce this analysis",
         "Rscript --vanilla run_lagm.r \\",
     ]
-    for i in range(0, len(r_args), 2):
-        if i + 1 < len(r_args):
-            repro_lines.append(f"  {r_args[i]} {r_args[i+1]} \\")
+    i = 0
+    while i < len(r_args):
+        arg = r_args[i]
+        # Boolean flags have no following value
+        if arg == "--use-ped":
+            repro_lines.append(f"  {arg} \\")
+            i += 1
+        elif i + 1 < len(r_args):
+            repro_lines.append(f"  {arg} {r_args[i+1]} \\")
+            i += 2
         else:
-            repro_lines.append(f"  {r_args[i]} \\")
+            repro_lines.append(f"  {arg} \\")
+            i += 1
     # Remove trailing backslash from last line
     if repro_lines[-1].endswith(" \\"):
         repro_lines[-1] = repro_lines[-1][:-2]

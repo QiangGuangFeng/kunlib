@@ -3,11 +3,7 @@
 # Called by lagm_mating.py via subprocess.
 
 suppressPackageStartupMessages({
-  if (!require(lagm, quietly = TRUE)) {
-    if (!require(remotes, quietly = TRUE)) install.packages("remotes", repos = "https://cran.r-project.org")
-    remotes::install_github("kzy599/LAGM", subdir = "lagmRcpp")
-    library(lagm)
-  }
+  library(lagm)
   library(data.table)
 })
 
@@ -146,8 +142,10 @@ male_max_vec   <- rep(male_max, length(male_ids))
 
 # Align genotype to id_index order
 geno_dt <- geno_dt[match(id_index_dt$ID, geno_dt$ID), ]
-if (any(is.na(geno_dt$ID))) {
-  stop("Some IDs in id_index_sex are not found in geno file.")
+missing_ids <- id_index_dt$ID[is.na(geno_dt$ID)]
+if (length(missing_ids) > 0) {
+  stop(paste0("IDs from id_index_sex not found in geno file: ",
+              paste(head(missing_ids, 10), collapse = ", ")))
 }
 
 # --------------------------------------------------------------------------- #
