@@ -9,6 +9,8 @@ metadata:
   kunlib:
     requires:
       bins: [python3]
+      r_packages: []
+      python_packages: []
     emoji: "🧬"
     trigger_keywords:
       - keyword that routes to this skill
@@ -57,6 +59,41 @@ python skills/your-skill-name/your_skill.py --input <file> --output <dir>
 | `--input` | path | — | Input file or directory |
 | `--output` | path | required | Output directory |
 | `--demo` | flag | false | Run with synthetic data |
+
+## Dependencies
+
+List every external dependency so users can install them before running the skill.
+
+### System Binaries
+
+| Binary | Version | Install Method | Notes |
+|--------|---------|----------------|-------|
+| `python3` | ≥ 3.9 | `conda install python=3.9` | Required by KunLib framework |
+
+### R Packages
+
+| Package | Version | Install Method | Notes |
+|---------|---------|----------------|-------|
+| — | — | — | *(remove this row and add entries if your skill uses R)* |
+
+### Python Packages
+
+| Package | Version | Install Method | Notes |
+|---------|---------|----------------|-------|
+| — | — | — | *(remove this row and add entries if your skill uses Python packages)* |
+
+> **Install Method** should be one of:
+>
+> | Category | Example |
+> |----------|---------|
+> | conda / pip | `conda install -c conda-forge plink` or `pip install pandas` |
+> | CRAN | `install.packages("data.table")` |
+> | Bioconductor | `BiocManager::install("GenomicRanges")` |
+> | GitHub | `remotes::install_github("user/repo")` — include full URL |
+> | Manual download | Provide download URL and note any license restrictions |
+>
+> ⚠️ If a dependency requires manual download due to **licensing or commercial
+> restrictions**, clearly state this and provide the official download URL.
 
 ## Output Structure
 

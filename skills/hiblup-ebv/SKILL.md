@@ -11,7 +11,8 @@ metadata:
   kunlib:
     requires:
       bins: [python3, Rscript, plink, hiblup]
-      packages: [data.table]
+      r_packages: [data.table]
+      python_packages: []
     emoji: "🐄"
     trigger_keywords:
       - gblup
@@ -83,6 +84,27 @@ python skills/hiblup-ebv/hiblup_ebv.py --input /path/to/data --output /tmp/hiblu
 | `--threads` | int | 32 | hiblup/plink 线程数 |
 | `--plink-format` | flag | false | 基因型文件已是 plink 格式时启用 |
 | `--fast-demo` | flag | false | 测试专用: mock demo 加速 |
+
+## Dependencies
+
+### System Binaries
+
+| Binary | Version | Install Method | Notes |
+|--------|---------|----------------|-------|
+| `python3` | ≥ 3.9 | `conda install python=3.9` | KunLib 框架需要 |
+| `Rscript` | ≥ 4.0 | `conda install -c conda-forge r-base` | R 脚本运行环境 |
+| `plink` | 1.9 | `conda install -c bioconda plink` | 基因型格式转换 |
+| `hiblup` | — | 手动下载: https://hiblup.github.io/ | ⚠️ 需用户自行下载安装，请参阅官网说明 |
+
+### R Packages
+
+| Package | Version | Install Method | Notes |
+|---------|---------|----------------|-------|
+| `data.table` | — | `install.packages("data.table")` 或 `conda install -c conda-forge r-data.table` | 高性能数据读写 |
+
+### Python Packages
+
+*(此技能不需要额外的 Python 包)*
 
 ## Output Structure
 
