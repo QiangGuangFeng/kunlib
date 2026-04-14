@@ -11,6 +11,7 @@ metadata:
       bins: [python3]
       r_packages: []
       python_packages: []
+      bioc_packages: []
     emoji: "🧬"
     trigger_keywords:
       - keyword that routes to this skill
@@ -82,18 +83,29 @@ List every external dependency so users can install them before running the skil
 |---------|---------|----------------|-------|
 | — | — | — | *(remove this row and add entries if your skill uses Python packages)* |
 
+### Bioconductor Packages
+
+| Package | Version | Install Method | Notes |
+|---------|---------|----------------|-------|
+| — | — | — | *(remove this row and add entries if your skill uses Bioconductor)* |
+
 > **Install Method** should be one of:
 >
 > | Category | Example |
 > |----------|---------|
-> | conda / pip | `conda install -c conda-forge plink` or `pip install pandas` |
+> | conda / conda-forge / Bioconda | `conda install -c bioconda samtools` |
+> | pip / PyPI | `pip install pandas` |
 > | CRAN | `install.packages("data.table")` |
-> | Bioconductor | `BiocManager::install("GenomicRanges")` |
-> | GitHub | `remotes::install_github("user/repo")` — include full URL |
-> | Manual download | Provide download URL and note any license restrictions |
+> | Bioconductor | `BiocManager::install("DESeq2")` |
+> | GitHub (R) | `remotes::install_github("author/pkg")` — include full URL |
+> | GitHub (CLI/C++) | `git clone https://github.com/... && make install` |
+> | URL direct download | `wget https://example.com/tool-v1.0.tar.gz` |
+> | System package manager | `apt install libhts-dev` / `brew install htslib` |
+> | Manual download (licensed) | Provide official URL and note license restrictions |
 >
-> ⚠️ If a dependency requires manual download due to **licensing or commercial
-> restrictions**, clearly state this and provide the official download URL.
+> ⚠️ If a dependency requires **manual download due to licensing or commercial
+> restrictions** (e.g., ASReml, FImpute, commercial chip annotation tools),
+> clearly state this and provide the official download URL.
 
 ## Output Structure
 

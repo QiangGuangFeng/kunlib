@@ -305,6 +305,7 @@ requires:
   bins: [python3, Rscript, plink]   # system binaries on PATH
   r_packages: [data.table]           # R packages
   python_packages: [pandas, numpy]   # Python packages
+  bioc_packages: [GenomicRanges]     # Bioconductor packages
 ```
 
 The `## Dependencies` section in SKILL.md must list **every** dependency with
@@ -313,14 +314,18 @@ of these categories for Install Method:
 
 | Category | Example |
 |----------|---------|
-| conda / pip | `conda install -c conda-forge plink` or `pip install pandas` |
+| conda / conda-forge / Bioconda | `conda install -c bioconda samtools` |
+| pip / PyPI | `pip install pandas` |
 | CRAN | `install.packages("data.table")` |
-| Bioconductor | `BiocManager::install("GenomicRanges")` |
-| GitHub | `remotes::install_github("user/repo")` — include full URL |
-| Manual download | Provide download URL and note any license restrictions |
+| Bioconductor | `BiocManager::install("DESeq2")` |
+| GitHub (R) | `remotes::install_github("author/pkg")` — include full URL |
+| GitHub (CLI/C++) | `git clone https://github.com/... && make install` |
+| URL direct download | `wget https://example.com/tool-v1.0.tar.gz` |
+| System package manager | `apt install libhts-dev` / `brew install htslib` |
+| Manual download (licensed) | Provide official URL and note license restrictions |
 
 ⚠️ If a dependency requires manual download due to licensing or commercial
-restrictions (e.g., certain BLUP software, commercial chip annotation tools),
+restrictions (e.g., ASReml, FImpute, commercial chip annotation tools),
 clearly state this in the Notes column with the official download URL.
 
 ### Step 6: Write Tests

@@ -13,6 +13,7 @@ metadata:
       bins: [python3, Rscript, plink, hiblup]
       r_packages: [data.table]
       python_packages: []
+      bioc_packages: []
     emoji: "🐄"
     trigger_keywords:
       - gblup
@@ -105,6 +106,10 @@ python skills/hiblup-ebv/hiblup_ebv.py --input /path/to/data --output /tmp/hiblu
 ### Python Packages
 
 *(此技能不需要额外的 Python 包)*
+
+### Bioconductor Packages
+
+*(此技能不需要 Bioconductor 包)*
 
 ## Output Structure
 
