@@ -5,7 +5,7 @@
 1. Fork `kzy599/kunlib`
 2. 在你的 fork 里创建 `skills/<你的技能名>/` 目录
 3. 把你的脚本文件**原样放进去**（Python、R、Shell 都行，不需要做任何修改）
-4. 复制下面的 prompt 模板，填写 3 项基本信息
+4. 复制下面的 prompt 模板，填写 6 项必填信息（4 项推荐填写）
 5. 在 issue 或 comment 中 @copilot 并粘贴填好的 prompt
 6. Agent 自动完成所有改造并提交到你的 fork
 
@@ -43,21 +43,45 @@ Demo 数据有两种来源，agent 会自动选择最合适的方式：
 ```
 @copilot 请将 skills/<技能名>/ 目录中的脚本改造为 kunlib 标准技能。
 
+# 🟢 必填项
+
 技能名: <填写技能名，kebab-case，如 bindiff-gwas>
-描述: <填写技能的简要描述>
+描述: <填写技能的简要描述，一句话>
 脚本语言: <Python / R / Shell / 混合>
+输入: <描述输入文件及格式，如 "phe.csv(ID+表型列) + geno.csv(0/1/2基因型矩阵)">
+输出: <描述关键输出文件，如 "ebv_result.csv(ID+EBV列), manhattan.png">
+依赖: <列出所有外部依赖及安装方式，如 "plink 1.9(conda -c bioconda), R/data.table(CRAN), hiblup(手动下载 https://hiblup.github.io/)">
+
+# 🟡 推荐项（有则填，没有 agent 自行推理）
+
+参数说明: <如 "trait-pos: int, 表型列位置, 默认4; threads: int, 线程数, 默认32">
+方法学: <如 "VanRaden Method 1 建立 GRM，Henderson MME 求解 GBLUP">
+Demo 数据: <"自带 demo/ 目录" 或 "让脚本生成" 或 不填>
+参考文献: <如 "VanRaden 2008, doi:10.3168/jds.2007-0980">
 ```
 
-> 只需填 3 行。agent 会自动完成：`@skill` 装饰器、`SKILL.md`、`--demo` 模式、标准目录结构、测试。
+> 必填 6 项，推荐 4 项。agent 会自动完成：`@skill` 装饰器、`SKILL.md`、`--demo` 模式、标准目录结构、测试。
 
 ## 示例
 
 ```
 @copilot 请将 skills/bindiff-gwas/ 目录中的脚本改造为 kunlib 标准技能。
 
+# 🟢 必填项
+
 技能名: bindiff-gwas
 描述: 利用品种间 GWAS 结果识别差异 SNP 位点
 脚本语言: Python
+输入: "gwas_result.csv(SNP_ID + P_value + Beta列)"
+输出: "diff_snp.csv(差异SNP列表), manhattan.png"
+依赖: "Python/pandas(pip), Python/matplotlib(pip)"
+
+# 🟡 推荐项
+
+参数说明: "pval-threshold: float, P值阈值, 默认5e-8; top-n: int, 输出前N个SNP, 默认100"
+方法学: "按P值过滤 SNP，基于 Beta 系数方向区分品种间差异位点"
+Demo 数据: 让脚本生成
+参考文献: —
 ```
 
 ## Agent 会做什么
@@ -65,7 +89,7 @@ Demo 数据有两种来源，agent 会自动选择最合适的方式：
 收到 prompt 后，agent 会自动：
 
 1. 分析你的原始脚本（输入、输出、参数、依赖）
-2. 用 `@skill` 装饰器包装，接入 KunLib 框架
+2. 用 `@skill` 装饰器包装，接入 KunLib 框架（包含 `SkillRequires` 和 `IOField` 声明）
 3. 添加 `--demo` 模式（脚本生成合成数据 或 使用你提供的 demo 文件）
 4. 创建 `SKILL.md` 方法学文档
 5. 编写测试（`tests/test_<skill>.py`）

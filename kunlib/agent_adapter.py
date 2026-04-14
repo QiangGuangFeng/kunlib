@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 from typing import Any
 
 from kunlib.catalog import _param_type_name
@@ -19,6 +20,7 @@ class KunLibAdapter:
         docs = adapter.get_skill_docs()           # SKILL.md 内容
         manifest = adapter.get_skill_manifest()    # 结构化清单
         result = adapter.run_skill("hiblup-ebv", {"demo": True, "output": "/tmp/out"})
+        deps = adapter.check_skill_deps("hiblup-ebv")  # 依赖检查
     """
 
     def __init__(self):
@@ -34,6 +36,32 @@ class KunLibAdapter:
                 "input_formats": m.input_formats,
                 "has_demo": m.has_demo,
                 "tags": m.tags,
+                "requires": {
+                    "bins": m.requires.bins,
+                    "r_packages": m.requires.r_packages,
+                    "python_packages": m.requires.python_packages,
+                    "bioc_packages": m.requires.bioc_packages,
+                },
+                "input_schema": [
+                    {
+                        "name": f.name,
+                        "format": f.format,
+                        "required_fields": f.required_fields,
+                        "dir": f.dir,
+                        "description": f.description,
+                    }
+                    for f in m.input_schema
+                ],
+                "output_schema": [
+                    {
+                        "name": f.name,
+                        "format": f.format,
+                        "required_fields": f.required_fields,
+                        "dir": f.dir,
+                        "description": f.description,
+                    }
+                    for f in m.output_schema
+                ],
                 "params": [
                     {"name": p.name, "type": _param_type_name(p),
                      "required": p.required, "help": p.help, "is_flag": p.is_flag}
@@ -45,6 +73,28 @@ class KunLibAdapter:
 
     def get_skill_docs(self) -> dict[str, str]:
         return get_skill_docs()
+
+    def check_skill_deps(self, skill_name: str) -> dict[str, Any]:
+        """检查技能所需依赖是否已安装。"""
+        meta = self.registry.get(skill_name)
+        if not meta:
+            return {"error": f"Skill '{skill_name}' not found"}
+
+        result: dict[str, Any] = {
+            "bins": {},
+            "summary": {"total": 0, "found": 0, "missing": 0},
+        }
+
+        for bin_name in meta.requires.bins:
+            found = shutil.which(bin_name) is not None
+            result["bins"][bin_name] = found
+            result["summary"]["total"] += 1
+            if found:
+                result["summary"]["found"] += 1
+            else:
+                result["summary"]["missing"] += 1
+
+        return result
 
     def route(self, query: str) -> SkillMeta | None:
         query_lower = query.lower()

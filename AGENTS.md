@@ -175,7 +175,7 @@ External developers can add a skill with minimal effort using the prompt templat
 
 1. Fork this repo
 2. Put your script in `skills/<skill-name>/`
-3. Fill in the 3-line prompt from [`templates/ADD-SKILL-PROMPT.md`](templates/ADD-SKILL-PROMPT.md)
+3. Fill in the 6-item prompt from [`templates/ADD-SKILL-PROMPT.md`](templates/ADD-SKILL-PROMPT.md)
 4. @copilot with the prompt — agent handles all the conversion
 
 For the full manual conversion process, see the section below.
@@ -196,6 +196,17 @@ Identify from the user's script:
 - **Parameters**: What knobs can the user tune? Types, defaults?
 - **Dependencies**: External binaries (Rscript, plink, samtools)? Python packages?
 - **Core logic**: The actual computation (keep this unchanged as much as possible)
+
+#### Agent 必须从用户处确认的信息（不可仅靠推理）
+
+| 信息 | 为什么不能推理 |
+|------|---------------|
+| 依赖安装方式 | `subprocess.run("hiblup")` 只告诉你命令名，不告诉你怎么装 |
+| 参数默认值的领域合理性 | `trait_pos=4` 是否合理，只有用户知道 |
+| 输入文件字段含义 | `geno.csv` 是 0/1/2 编码还是 A/B 编码，脚本里不一定写明 |
+| 许可证限制 | hiblup 需要手动下载，这是法律/商业信息不是技术信息 |
+
+如果用户提供的信息不足，agent 应主动追问上述关键项，而不是猜测。
 
 ### Step 2: Create Skill Directory
 
