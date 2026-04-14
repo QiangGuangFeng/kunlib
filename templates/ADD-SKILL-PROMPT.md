@@ -70,17 +70,18 @@ Demo 数据: <"自带 demo/ 目录" 或 "让脚本生成" 或 不填>
 # 🟢 必填项
 
 技能名: bindiff-gwas
+作者：Zhang3Li4Wang5
 描述: 利用品种间 GWAS 结果识别差异 SNP 位点
 脚本语言: Python
 输入: "gwas_result.csv(SNP_ID + P_value + Beta列)"
 输出: "diff_snp.csv(差异SNP列表), manhattan.png"
 依赖: "Python/pandas(pip), Python/matplotlib(pip)"
 
-# 🟡 推荐项
+# 🟡 推荐项（agent也可以自己来推断）
 
 参数说明: "pval-threshold: float, P值阈值, 默认5e-8; top-n: int, 输出前N个SNP, 默认100"
 方法学: "按P值过滤 SNP，基于 Beta 系数方向区分品种间差异位点"
-Demo 数据: 让脚本生成
+Demo 数据: 让脚本（你的数据生成脚本名）生成
 参考文献: —
 ```
 
