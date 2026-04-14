@@ -47,11 +47,12 @@ Demo 数据有两种来源，agent 会自动选择最合适的方式：
 ## Prompt 模板
 
 ```
-@copilot 请将 skills/<技能名>/ 目录中的脚本改造为 kunlib 标准技能。
+请参考AGENTS.md, 将 skills/<技能名>/ 目录中的脚本改造为 kunlib 标准技能。
 
 # 🟢 必填项
 
 技能名: <填写技能名，kebab-case，如 bindiff-gwas>
+作者：Zhang3Li4Wang5
 描述: <填写技能的简要描述，一句话>
 脚本语言: <Python / R / Shell / 混合>
 输入: <描述输入文件及格式，如 "phe.csv(ID+表型列) + geno.csv(0/1/2基因型矩阵)">
@@ -73,7 +74,7 @@ Demo 数据: <"自带 demo/ 目录" 或 "让脚本生成" 或 不填>
 ## 示例
 
 ```
-@copilot 请将 skills/bindiff-gwas/ 目录中的脚本改造为 kunlib 标准技能。
+请参考AGENTS.md，将 skills/bindiff-gwas/ 目录中的脚本改造为 kunlib 标准技能。
 
 # 🟢 必填项
 
