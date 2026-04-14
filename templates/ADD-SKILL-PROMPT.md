@@ -41,10 +41,10 @@ Demo 数据有两种来源，agent 会自动选择最合适的方式：
 ## Prompt 模板
 
 ```
-@copilot 请将 skills/<技能名>/ 目录中的脚本改造为 KunLib 标准技能。
+@copilot 请将 skills/<技能名>/ 目录中的脚本改造为 kunlib 标准技能。
 
 技能名: <填写技能名，kebab-case，如 bindiff-gwas>
-一句话描述: <填写技能的简要描述>
+描述: <填写技能的简要描述>
 脚本语言: <Python / R / Shell / 混合>
 ```
 
@@ -53,10 +53,10 @@ Demo 数据有两种来源，agent 会自动选择最合适的方式：
 ## 示例
 
 ```
-@copilot 请将 skills/bindiff-gwas/ 目录中的脚本改造为 KunLib 标准技能。
+@copilot 请将 skills/bindiff-gwas/ 目录中的脚本改造为 kunlib 标准技能。
 
 技能名: bindiff-gwas
-一句话描述: 利用品种间 GWAS 结果识别差异 SNP 位点
+描述: 利用品种间 GWAS 结果识别差异 SNP 位点
 脚本语言: Python
 ```
 
