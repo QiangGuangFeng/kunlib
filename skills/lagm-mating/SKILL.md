@@ -9,6 +9,7 @@ license: MIT
 tags: [animal-breeding, mating-plan, optimal-contribution, genetic-diversity, lagm, quantitative-genetics]
 metadata:
   kunlib:
+    kind: data
     requires:
       bins: [python3, Rscript]
       r_packages: [data.table, remotes, visPedigree]
