@@ -195,6 +195,9 @@ class SkillMeta:
         """
         output_dir = Path(args.output).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
+          # resolve --input to absolute path (defense against cwd changes in subprocesses)
+        if getattr(args, "input", None) is not None:
+            args.input = str(Path(args.input).resolve())
 
         dirs: dict[str, Path] = {}
         for d in KIND_DIRS[self.kind]:
