@@ -128,7 +128,7 @@ def _write_report(
     input_formats=["csv-dir (id_index_sex.csv + geno.csv + optional ped.csv)"],
     requires=SkillRequires(
         bins=["python3", "Rscript"],
-        r_packages=["data.table", "remotes"],
+        r_packages=["data.table", "remotes", "visPedigree", "lagm", "AlphaSimR"],
     ),
     input_schema=[
         IOField(
@@ -153,12 +153,7 @@ def _write_report(
     emoji="🐄",
     params=[
         Param("demo", is_flag=True, help="使用 generate_demo.r 生成合成数据并运行"),
-        Param("id-index-file", default="id_index_sex.csv",
-              help="输入目录中的候选个体信息文件名"),
-        Param("geno-file", default="geno.csv",
-              help="输入目录中的基因型文件名"),
-        Param("ped-file", default="ped.csv",
-              help="输入目录中的系谱文件名（可选）"),
+        # --id-index-sex-file, --geno-file, --ped-file 由框架根据 input_schema 自动生成
         Param("t", type=int, default=3,
               help="前瞻代数 (lookahead generations)"),
         Param("n-crosses", type=int, default=30,
@@ -220,12 +215,12 @@ def run(args: argparse.Namespace) -> KunResult:
         input_dir = Path(args.input)
 
     # --- resolve individual input files ---
-    id_index_path = input_dir / args.id_index_file
+    id_index_path = input_dir / args.id_index_sex_file
     geno_path = input_dir / args.geno_file
     ped_path = input_dir / args.ped_file
 
     # --- validate required inputs ---
-    required = [args.id_index_file, args.geno_file]
+    required = [args.id_index_sex_file, args.geno_file]
     missing = _validate_input(input_dir, required)
     if missing:
         raise SystemExit(

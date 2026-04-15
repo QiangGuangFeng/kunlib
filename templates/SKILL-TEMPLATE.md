@@ -69,12 +69,14 @@ python skills/your-skill-name/your_skill.py --input <dir> --output <dir>
 ## Parameters
 
 > `--input` 和 `--output` 由框架根据 kind 自动注入，不需要在 `params=[]` 中声明。
+> `--xxx-file` 参数由框架根据 `input_schema` 自动生成（仅 data/validator kind），不需要手动声明。
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `--input` | path | — | Input directory *(框架自动注入；仅 data=可选, validator=必需)* |
 | `--output` | path | required | Output directory *(框架自动注入；所有 kind 必需)* |
 | `--demo` | flag | false | Run with synthetic data |
+| `--<name>-file` | str | `<IOField.name>` | *(框架根据 input_schema 自动生成，覆盖输入目录中的文件名)* |
 
 ## Dependencies
 

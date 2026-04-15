@@ -12,7 +12,7 @@ metadata:
     kind: data
     requires:
       bins: [python3, Rscript]
-      r_packages: [data.table, remotes, visPedigree]
+      r_packages: [data.table, remotes, visPedigree, lagm, AlphaSimR]
       python_packages: []
       bioc_packages: []
     emoji: "🐄"
@@ -111,9 +111,9 @@ python skills/lagm-mating/lagm_mating.py \
 | `--input` | path | — | 输入文件目录 *(框架自动注入)* |
 | `--output` | path | required | 输出目录 *(框架自动注入)* |
 | `--demo` | flag | false | 使用 generate_demo.r 生成合成数据并运行 |
-| `--id-index-file` | str | `id_index_sex.csv` | 候选个体信息文件名 |
-| `--geno-file` | str | `geno.csv` | 基因型文件名 |
-| `--ped-file` | str | `ped.csv` | 系谱文件名（可选） |
+| `--id-index-sex-file` | str | `id_index_sex.csv` | 候选个体信息文件名 *(框架根据 input_schema 自动生成)* |
+| `--geno-file` | str | `geno.csv` | 基因型文件名 *(框架根据 input_schema 自动生成)* |
+| `--ped-file` | str | `ped.csv` | 系谱文件名（可选） *(框架根据 input_schema 自动生成)* |
 | `--t` | int | `3` | 前瞻代数 (lookahead generations) |
 | `--n-crosses` | int | `30` | 目标配对数 |
 | `--male-contribution-min` | int | `2` | 每个公本最少贡献次数 |

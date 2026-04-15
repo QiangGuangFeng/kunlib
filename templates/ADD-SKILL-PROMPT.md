@@ -104,7 +104,31 @@ Demo 数据: 让脚本生成
 参考文献: —
 ```
 
-### 示例 2：orchestrator 型（无脚本，仅描述）
+### 示例 2：generator 型（生成合成数据）
+
+```
+请参考AGENTS.md，在 skills/sim-breeding-pop/ 中创建 kunlib 标准技能。
+
+# 🟢 必填项
+
+技能名: sim-breeding-pop
+作者：kzy599
+描述: 利用 AlphaSimR 生成合成育种群体数据（表型+基因型+系谱）
+技能类型: generator
+脚本语言: Python + R
+输入: 无（generator 凭空生成数据）
+输出: "phe.csv(个体表型), geno.csv(0/1/2基因型矩阵), ped.csv(系谱)"
+依赖: "Rscript(conda -c conda-forge), R/AlphaSimR(CRAN), R/data.table(CRAN)"
+
+# 🟡 推荐项
+
+参数说明: "n-ind: int, 个体数, 默认200; n-snp: int, SNP数, 默认1000; h2: float, 遗传力, 默认0.3"
+方法学: "AlphaSimR 模拟基础群体 → 随机交配 → 导出表型、基因型、系谱"
+Demo 数据: 不需要（generator 本身就是生成数据）
+参考文献: "Gaynor et al. 2021, doi:10.1534/g3.120.401882"
+```
+
+### 示例 3：orchestrator 型（无脚本，仅描述）
 
 ```
 请参考AGENTS.md，在 skills/ebv-mating-pipeline/ 中创建 kunlib 标准技能。
@@ -128,7 +152,31 @@ Demo 数据: 透传 --demo 给子技能
 参考文献: —
 ```
 
-### 示例 3：info 型（无脚本，纯信息）
+### 示例 4：validator 型（数据校验）
+
+```
+请参考AGENTS.md，将 skills/geno-qc/ 目录中的脚本改造为 kunlib 标准技能。
+
+# 🟢 必填项
+
+技能名: geno-qc
+作者：Zhang3Li4Wang5
+描述: 校验基因型文件格式（0/1/2 编码、缺失率、MAF 等）
+技能类型: validator
+脚本语言: Python
+输入: "geno.csv(第1列ID，其余列SNP 0/1/2编码)"
+输出: "validation_report.csv(每个检查项的通过/失败状态)"
+依赖: "Python/pandas(pip), Python/numpy(pip)"
+
+# 🟡 推荐项
+
+参数说明: "max-missing-rate: float, 最大缺失率, 默认0.1; min-maf: float, 最小MAF, 默认0.01; strict: flag, 严格模式"
+方法学: "检查编码范围、样本缺失率、位点MAF、重复ID等"
+Demo 数据: 让脚本生成
+参考文献: —
+```
+
+### 示例 5：info 型（无脚本，纯信息）
 
 ```
 请参考AGENTS.md，在 skills/env-check/ 中创建 kunlib 标准技能。

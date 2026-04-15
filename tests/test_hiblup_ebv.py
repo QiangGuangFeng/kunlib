@@ -90,23 +90,23 @@ class TestParser:
 
     def test_parse_sel_file(self):
         parser = _run.__kunlib_meta__.build_parser()
-        args = parser.parse_args(["--output", "/tmp/x", "--sel-file", "s.csv"])
-        assert args.sel_file == "s.csv"
+        args = parser.parse_args(["--output", "/tmp/x", "--sel-id-file", "s.csv"])
+        assert args.sel_id_file == "s.csv"
 
     def test_default_sel_file(self):
         parser = _run.__kunlib_meta__.build_parser()
         args = parser.parse_args(["--output", "/tmp/x"])
-        assert args.sel_file == "sel_id.csv"
+        assert args.sel_id_file == "sel_id.csv"
 
     def test_parse_ref_file(self):
         parser = _run.__kunlib_meta__.build_parser()
-        args = parser.parse_args(["--output", "/tmp/x", "--ref-file", "r.csv"])
-        assert args.ref_file == "r.csv"
+        args = parser.parse_args(["--output", "/tmp/x", "--ref-id-file", "r.csv"])
+        assert args.ref_id_file == "r.csv"
 
     def test_default_ref_file(self):
         parser = _run.__kunlib_meta__.build_parser()
         args = parser.parse_args(["--output", "/tmp/x"])
-        assert args.ref_file == "ref_id.csv"
+        assert args.ref_id_file == "ref_id.csv"
 
     def test_parse_threads(self):
         parser = _run.__kunlib_meta__.build_parser()

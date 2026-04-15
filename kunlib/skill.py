@@ -85,6 +85,23 @@ class IOField:
     description: str = ""
 
 
+def _iofield_to_flag(name: str) -> str:
+    """IOField.name → CLI flag name (without --)
+
+    规则: 去掉扩展名 → 下划线转连字符 → 加 '-file' 后缀
+
+    Examples:
+      "phe.csv"            → "phe-file"
+      "geno.csv"           → "geno-file"
+      "sel_id.csv"         → "sel-id-file"
+      "id_index_sex.csv"   → "id-index-sex-file"
+      "ped.csv"            → "ped-file"
+    """
+    stem = name.rsplit('.', 1)[0]        # "sel_id.csv" → "sel_id"
+    kebab = stem.replace('_', '-')       # "sel_id" → "sel-id"
+    return f"{kebab}-file"               # "sel-id" → "sel-id-file"
+
+
 @dataclass
 class SkillMeta:
     """技能元信息，由 @skill 装饰器自动填充。"""
@@ -117,6 +134,8 @@ class SkillMeta:
         框架自动注入:
           --output  输出目录（必需，所有 kind 均注入）
           --input   输入目录（根据 kind 决定是否注入及是否 required）
+
+        根据 input_schema 自动生成 --xxx-file 参数（仅当 --input 被注入时）。
         """
         parser = argparse.ArgumentParser(
             prog=f"kunlib run {self.name}",
@@ -134,10 +153,27 @@ class SkillMeta:
                 help="Input directory containing all required input files for this skill",
             )
 
+        # ---- 根据 input_schema 自动生成 --xxx-file 参数 ----
+        self._auto_input_params: set[str] = set()
+        if input_cfg["inject"] and self.input_schema:
+            for iof in self.input_schema:
+                flag_name = _iofield_to_flag(iof.name)
+                if flag_name in _RESERVED_PARAMS:
+                    continue
+                self._auto_input_params.add(flag_name)
+                parser.add_argument(
+                    f"--{flag_name}",
+                    type=str,
+                    default=iof.name,
+                    help=f"Filename within --input directory: {iof.description}" if iof.description else f"Filename within --input directory (default: {iof.name})",
+                )
+
         # ---- 技能自定义参数 ----
         for p in self.params:
             if p.name in _RESERVED_PARAMS:
                 continue  # 由框架注入，跳过
+            if p.name in self._auto_input_params:
+                continue  # 由框架从 input_schema 自动生成，跳过开发者的重复声明
             flag = f"--{p.name}"
             if p.is_flag:
                 parser.add_argument(flag, action="store_true", default=False, help=p.help)
@@ -147,6 +183,32 @@ class SkillMeta:
                     kw["required"] = True
                 parser.add_argument(flag, **kw)
         return parser
+
+    def prepare_env(self, args: argparse.Namespace) -> argparse.Namespace:
+        """创建标准输出目录结构并注入 args.*_dir 属性。
+
+        要求 args 中已有 args.output (str)。
+        根据 self.kind 创建对应子目录，注入:
+          args.output_dir, args.logs_dir, args.work_dir,
+          args.tables_dir, args.figures_dir, args.repro_dir
+        未创建的目录注入为 None。
+        """
+        output_dir = Path(args.output).resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        dirs: dict[str, Path] = {}
+        for d in KIND_DIRS[self.kind]:
+            p = output_dir / d
+            p.mkdir(exist_ok=True)
+            dirs[d] = p
+
+        args.output_dir = output_dir
+        args.logs_dir = dirs["logs"]
+        args.work_dir    = dirs.get("work")
+        args.tables_dir  = dirs.get("tables")
+        args.figures_dir = dirs.get("figures")
+        args.repro_dir   = dirs.get("reproducibility")
+        return args
 
     def run_cli(self, argv: list[str] | None = None) -> KunResult:
         """解析命令行参数 → 准备标准目录 → 执行 entry_func → 保存结果。
@@ -172,25 +234,7 @@ class SkillMeta:
         """
         parser = self.build_parser()
         args = parser.parse_args(argv)
-
-        # ---- 创建目录结构并注入到 args ----
-        output_dir = Path(args.output).resolve()
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        dirs: dict[str, Path] = {}
-        for d in KIND_DIRS[self.kind]:
-            p = output_dir / d
-            p.mkdir(exist_ok=True)
-            dirs[d] = p
-
-        args.output_dir = output_dir
-        args.logs_dir = dirs["logs"]
-
-        # 按需注入其他目录（kind 不创建的目录设为 None）
-        args.work_dir    = dirs.get("work")
-        args.tables_dir  = dirs.get("tables")
-        args.figures_dir = dirs.get("figures")
-        args.repro_dir   = dirs.get("reproducibility")
+        args = self.prepare_env(args)
 
         # ---- 执行技能 ----
         result = self.entry_func(args)
@@ -207,7 +251,7 @@ class SkillMeta:
 
         # 自动补全 output_dir
         if result.output_dir is None:
-            result.output_dir = output_dir
+            result.output_dir = args.output_dir
 
         # ---- 保存 result.json + 打印摘要 ----
         result.save()

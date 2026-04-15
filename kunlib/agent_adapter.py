@@ -110,8 +110,19 @@ class KunLibAdapter:
         meta = self.registry.get(skill_name)
         if not meta or not meta.entry_func:
             return {"error": f"Skill '{skill_name}' not found"}
+
+        if "output" not in args_dict:
+            return {"error": "'output' is required in args_dict"}
+
         ns = argparse.Namespace(**args_dict)
+        ns = meta.prepare_env(ns)
         result = meta.entry_func(ns)
+
         if isinstance(result, KunResult):
+            if result.kind == "data" and meta.kind != "data":
+                result.kind = meta.kind
+            if result.output_dir is None:
+                result.output_dir = ns.output_dir
+            result.save()
             return result.to_dict()
         return {"error": "Skill did not return KunResult"}

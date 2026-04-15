@@ -203,3 +203,102 @@ def test_kind_in_manifest():
     adapter = KunLibAdapter()
     for entry in adapter.get_skill_manifest():
         assert "kind" in entry, f"Missing 'kind' in manifest entry for {entry['name']}"
+
+
+# ---- prepare_env 测试 ----
+
+def test_prepare_env_creates_dirs(tmp_path):
+    """prepare_env() 应正确创建目录结构并注入 args 属性。"""
+    import argparse
+    from kunlib import skill, Param, KunResult
+
+    @skill(name="test-prepare-env", kind="data", params=[])
+    def _dummy(args):
+        return KunResult(skill_name="test-prepare-env", skill_version="0.0.1")
+
+    ns = argparse.Namespace(output=str(tmp_path))
+    ns = _dummy.__kunlib_meta__.prepare_env(ns)
+    assert ns.output_dir == tmp_path.resolve()
+    assert ns.work_dir is not None and ns.work_dir.is_dir()
+    assert ns.tables_dir is not None and ns.tables_dir.is_dir()
+    assert ns.logs_dir is not None and ns.logs_dir.is_dir()
+
+
+def test_adapter_run_skill_creates_dirs(tmp_path):
+    """KunLibAdapter.run_skill() 应正确创建目录结构并输出 result.json。"""
+    from kunlib.agent_adapter import KunLibAdapter
+    adapter = KunLibAdapter()
+    # test-skill 在本文件开头已注册
+    result = adapter.run_skill("test-skill", {"output": str(tmp_path), "demo": True, "count": 3})
+    assert "error" not in result
+    assert (tmp_path / "result.json").exists()
+    assert (tmp_path / "logs").is_dir()
+
+
+# ---- input_schema 自动生成文件参数测试 ----
+
+def test_input_schema_auto_generates_file_params():
+    """input_schema 中的 IOField 应自动生成 --xxx-file CLI 参数。"""
+    from kunlib import skill, Param, KunResult, IOField
+
+    @skill(
+        name="test-auto-input-params",
+        kind="data",
+        input_schema=[
+            IOField(name="phe.csv", description="表型文件"),
+            IOField(name="sel_id.csv", description="选择集ID"),
+        ],
+        params=[Param("demo", is_flag=True, help="Demo")],
+    )
+    def _auto(args):
+        return KunResult(skill_name="test-auto-input-params", skill_version="0.0.1")
+
+    parser = _auto.__kunlib_meta__.build_parser()
+    args = parser.parse_args(["--output", "/tmp/x", "--input", "/data"])
+    # 自动生成的参数应有默认值
+    assert args.phe_file == "phe.csv"
+    assert args.sel_id_file == "sel_id.csv"
+    # 覆盖默认值
+    args2 = parser.parse_args(["--output", "/tmp/x", "--input", "/data",
+                                "--phe-file", "my_phe.csv"])
+    assert args2.phe_file == "my_phe.csv"
+    assert args2.sel_id_file == "sel_id.csv"  # 未覆盖的保持默认
+
+
+def test_manual_param_silently_skipped_when_auto_generated():
+    """如果开发者在 params 中声明了与 input_schema 自动生成同名的 Param，框架静默跳过。"""
+    from kunlib import skill, Param, KunResult, IOField
+
+    @skill(
+        name="test-skip-dup-param",
+        kind="data",
+        input_schema=[IOField(name="phe.csv")],
+        params=[
+            Param("phe-file", default="old_phe.csv", help="should be skipped"),
+        ],
+    )
+    def _dup(args):
+        return KunResult(skill_name="test-skip-dup-param", skill_version="0.0.1")
+
+    parser = _dup.__kunlib_meta__.build_parser()
+    args = parser.parse_args(["--output", "/tmp/x", "--input", "/data"])
+    # 应使用 input_schema 的默认值（phe.csv），不是 Param 的 default（old_phe.csv）
+    assert args.phe_file == "phe.csv"
+
+
+def test_generator_no_auto_input_params():
+    """generator kind 不注入 --input，也不自动生成 input_schema 文件参数。"""
+    from kunlib import skill, Param, KunResult, IOField
+
+    @skill(
+        name="test-gen-no-auto",
+        kind="generator",
+        input_schema=[],  # generator 通常没有 input_schema
+        params=[],
+    )
+    def _gen(args):
+        return KunResult(skill_name="test-gen-no-auto", skill_version="0.0.1")
+
+    parser = _gen.__kunlib_meta__.build_parser()
+    args = parser.parse_args(["--output", "/tmp/x"])
+    assert not hasattr(args, "input")

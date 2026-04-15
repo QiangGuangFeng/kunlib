@@ -161,13 +161,13 @@ class TestParser:
 
     def test_parse_id_index_file(self):
         parser = _run.__kunlib_meta__.build_parser()
-        args = parser.parse_args(["--output", "/tmp/x", "--id-index-file", "my.csv"])
-        assert args.id_index_file == "my.csv"
+        args = parser.parse_args(["--output", "/tmp/x", "--id-index-sex-file", "my.csv"])
+        assert args.id_index_sex_file == "my.csv"
 
     def test_default_id_index_file(self):
         parser = _run.__kunlib_meta__.build_parser()
         args = parser.parse_args(["--output", "/tmp/x"])
-        assert args.id_index_file == "id_index_sex.csv"
+        assert args.id_index_sex_file == "id_index_sex.csv"
 
     def test_parse_geno_file(self):
         parser = _run.__kunlib_meta__.build_parser()
