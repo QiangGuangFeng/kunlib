@@ -195,7 +195,8 @@ class SkillMeta:
         """
         output_dir = Path(args.output).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
-          # resolve --input to absolute path (defense against cwd changes in subprocesses)
+        
+        # resolve --input to absolute path (defense against cwd changes in subprocesses)
         if getattr(args, "input", None) is not None:
             args.input = str(Path(args.input).resolve())
 
