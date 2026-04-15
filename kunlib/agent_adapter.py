@@ -31,6 +31,7 @@ class KunLibAdapter:
         return [
             {
                 "name": m.name,
+                "kind": m.kind,
                 "description": m.description,
                 "trigger_keywords": m.trigger_keywords,
                 "input_formats": m.input_formats,

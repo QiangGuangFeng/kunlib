@@ -84,3 +84,122 @@ def test_run_cli_rejects_non_kunresult(tmp_path):
     import pytest
     with pytest.raises(TypeError, match="must return KunResult"):
         _bad.__kunlib_meta__.run_cli(["--output", str(tmp_path)])
+
+
+# ---- kind 相关测试 ----
+
+def test_default_kind_is_data():
+    """未声明 kind 时默认为 'data'。"""
+    assert _dummy_run.__kunlib_meta__.kind == "data"
+
+
+def test_invalid_kind_raises():
+    """声明无效 kind 时应抛出 ValueError。"""
+    import pytest
+    with pytest.raises(ValueError, match="Invalid skill kind"):
+        @skill(name="test-invalid-kind", kind="unknown", params=[])
+        def _bad(args):
+            return KunResult(skill_name="test-invalid-kind", skill_version="0.0.1")
+
+
+def test_generator_no_input_injected():
+    """generator kind 不注入 --input。"""
+    @skill(name="test-generator", kind="generator", params=[])
+    def _gen(args):
+        return KunResult(skill_name="test-generator", skill_version="0.0.1")
+
+    parser = _gen.__kunlib_meta__.build_parser()
+    args = parser.parse_args(["--output", "/tmp/x"])
+    assert not hasattr(args, "input")
+
+
+def test_generator_creates_full_dirs(tmp_path):
+    """generator kind 创建完整标准目录。"""
+    @skill(name="test-generator-dirs", kind="generator", params=[])
+    def _gen(args):
+        return KunResult(skill_name="test-generator-dirs", skill_version="0.0.1",
+                         output_dir=args.output_dir)
+
+    _gen.__kunlib_meta__.run_cli(["--output", str(tmp_path)])
+    for d in ("work", "tables", "figures", "logs", "reproducibility"):
+        assert (tmp_path / d).is_dir(), f"Missing dir: {d}"
+
+
+def test_orchestrator_only_logs_dir(tmp_path):
+    """orchestrator kind 只创建 logs/ 目录。"""
+    @skill(name="test-orchestrator", kind="orchestrator", params=[])
+    def _orch(args):
+        assert args.work_dir is None
+        assert args.tables_dir is None
+        return KunResult(skill_name="test-orchestrator", skill_version="0.0.1",
+                         output_dir=args.output_dir)
+
+    _orch.__kunlib_meta__.run_cli(["--output", str(tmp_path)])
+    assert (tmp_path / "logs").is_dir()
+    assert not (tmp_path / "work").exists()
+    assert not (tmp_path / "tables").exists()
+    assert not (tmp_path / "figures").exists()
+
+
+def test_validator_input_required():
+    """validator kind 的 --input 是必需的。"""
+    @skill(name="test-validator-req", kind="validator", params=[])
+    def _val(args):
+        return KunResult(skill_name="test-validator-req", skill_version="0.0.1")
+
+    import pytest
+    parser = _val.__kunlib_meta__.build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--output", "/tmp/x"])  # 缺少 --input 应失败
+
+
+def test_validator_creates_logs_and_tables(tmp_path):
+    """validator kind 创建 logs/ 和 tables/ 目录。"""
+    @skill(name="test-validator-dirs", kind="validator", params=[])
+    def _val(args):
+        return KunResult(skill_name="test-validator-dirs", skill_version="0.0.1",
+                         output_dir=args.output_dir)
+
+    _val.__kunlib_meta__.run_cli(["--output", str(tmp_path), "--input", str(tmp_path)])
+    assert (tmp_path / "logs").is_dir()
+    assert (tmp_path / "tables").is_dir()
+    assert not (tmp_path / "work").exists()
+    assert not (tmp_path / "figures").exists()
+
+
+def test_info_no_input_only_logs(tmp_path):
+    """info kind 不注入 --input，只创建 logs/ 目录。"""
+    @skill(name="test-info", kind="info", params=[])
+    def _info(args):
+        assert args.work_dir is None
+        assert args.tables_dir is None
+        return KunResult(skill_name="test-info", skill_version="0.0.1",
+                         output_dir=args.output_dir)
+
+    parser = _info.__kunlib_meta__.build_parser()
+    args = parser.parse_args(["--output", "/tmp/x"])
+    assert not hasattr(args, "input")
+
+    _info.__kunlib_meta__.run_cli(["--output", str(tmp_path)])
+    assert (tmp_path / "logs").is_dir()
+    assert not (tmp_path / "work").exists()
+
+
+def test_kind_in_catalog(tmp_path):
+    """catalog.json 中包含 kind 字段。"""
+    import json
+    from kunlib.catalog import generate_catalog
+    from kunlib.skill import get_registry
+
+    path = generate_catalog(get_registry(), output_dir=tmp_path)
+    catalog = json.loads(path.read_text())
+    for entry in catalog["skills"]:
+        assert "kind" in entry, f"Missing 'kind' in catalog entry for {entry['name']}"
+
+
+def test_kind_in_manifest():
+    """agent_adapter manifest 中包含 kind 字段。"""
+    from kunlib.agent_adapter import KunLibAdapter
+    adapter = KunLibAdapter()
+    for entry in adapter.get_skill_manifest():
+        assert "kind" in entry, f"Missing 'kind' in manifest entry for {entry['name']}"

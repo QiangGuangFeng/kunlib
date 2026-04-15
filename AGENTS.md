@@ -26,7 +26,7 @@ kunlib run <skill> --demo --output /tmp/out
 |---------|---------|
 | `kunlib list` | List all registered skills |
 | `kunlib run <skill> --demo --output /tmp/out` | Run skill with demo data |
-| `kunlib run <skill> --input <path> --output <dir>` | Run with real data |
+| `kunlib run <skill> --input <dir> --output <dir>` | Run with real data (input is a directory) |
 | `python skills/<name>/<script>.py --demo --output /tmp/out` | Direct execution |
 | `kunlib catalog` | Regenerate `skills/catalog.json` |
 | `pytest -v` | Run all tests |
@@ -74,8 +74,7 @@ The script MUST:
 
 ### Auto parameters
 
-`--input` and `--output` are **automatically injected** by the framework. Do NOT
-declare them in `params=[...]`. `--output` is always required.
+`--input` (input directory) and `--output` (output directory) are **automatically injected** by the framework. `--input` is always a **directory path** — skills must define their own params (e.g. `--phe-file`, `--geno-file`) to specify which files within `--input` to read. This design ensures traceability: agent and user always know which directory was used as input. Do NOT declare them in `params=[...]`. `--output` is always required.
 
 ### Auto directory structure
 
@@ -108,6 +107,59 @@ These are injected into `args` and accessible as:
 `result.json` is written automatically by the framework after `run()` returns.
 The skill does NOT need to call `result.save()`.
 
+## Skill Kinds — 技能类型声明
+
+每个技能通过 `@skill(kind=...)` 声明类型。`--output` **对所有类型都是必需的**，
+框架保证每次执行都会产出 `result.json` + `logs/`，使 agent 可追踪任何技能的执行状态。
+
+### 类型总览
+
+| kind | `--input` | 创建的子目录 | 用途 |
+|------|-----------|-------------|------|
+| `data` (默认) | 注入，可选（输入目录） | work/ tables/ figures/ logs/ reproducibility/ | 读数据→算→出结果 |
+| `generator` | 不注入 | work/ tables/ figures/ logs/ reproducibility/ | 凭空生成数据 |
+| `orchestrator` | 不注入 | logs/ 仅此 | 编排多个技能的调用链 |
+| `validator` | 注入，**必需**（输入目录） | logs/ tables/ | 校验输入数据合规性 |
+| `info` | 不注入 | logs/ 仅此 | 查询环境/版本/配置信息 |
+
+### 规则
+
+1. **所有类型都必须 `return KunResult(...)`** — 这是框架的核心契约
+2. **所有类型的 `result.json` 都由框架自动写** — 技能不需要手动 save
+3. **`kind` 未声明时默认为 `"data"`** — 向后兼容现有技能
+4. **编排型技能** 必须在 `output/` 下为每个子技能创建编号子目录 (`01_<skill-name>/`, `02_<skill-name>/`)
+5. **`args.work_dir` 等目录在未创建的 kind 下为 `None`** — 技能应检查后再使用
+6. **`--input` 永远是目录路径** — 技能内的具体文件名（如 `phe.csv`, `geno.csv`）通过技能自己的 Param 声明（如 `--phe-file`、`--geno-file`），技能代码中通过 `Path(args.input) / args.phe_file` 拼接。这样设计是为了输入可追溯，agent 在上下游串联技能时，只需指定前一个技能的输出目录作为下一个技能的 `--input`。
+
+### Orchestrator 编排型约定
+
+编排型技能在自己的 `--output` 下为每个子技能创建独立子目录：
+
+    output/                          ← 编排技能的 --output
+    ├── result.json                  ← 编排技能自己的结果（记录流程状态）
+    ├── logs/                        ← 编排技能日志
+    ├── 01_hiblup-ebv/               ← 子技能1的完整输出
+    │   ├── result.json
+    │   ├── work/ tables/ figures/ ...
+    ├── 02_lagm-mating/              ← 子技能2的完整输出
+    │   ├── result.json
+    │   ├── work/ tables/ figures/ ...
+
+编排型技能的 `result.json` 记录调用链状态：
+
+    {
+      "skill": "breeding-pipeline",
+      "summary": {
+        "steps": [
+          {"skill": "hiblup-ebv", "status": "success", "output": "01_hiblup-ebv/"},
+          {"skill": "lagm-mating", "status": "success", "output": "02_lagm-mating/"}
+        ],
+        "total_steps": 2,
+        "completed": 2,
+        "failed": 0
+      }
+    }
+
 ## Skill Script Template
 
 ```python
@@ -136,14 +188,26 @@ SKILL_DIR = Path(__file__).resolve().parent
     ],
 )
 def run(args: argparse.Namespace) -> KunResult:
-    # Framework provides: args.output_dir, args.work_dir, args.tables_dir,
-    #                     args.figures_dir, args.logs_dir, args.repro_dir
+    # Framework provides:
+    #   args.input       → input directory path (str; only for data/validator kind)
+    #   args.output_dir  → output directory (Path)
+    #   args.work_dir    → intermediate files (Path or None)
+    #   args.tables_dir  → final tables (Path or None)
+    #   args.figures_dir → final figures (Path or None)
+    #   args.logs_dir    → run logs (Path, always available)
+    #   args.repro_dir   → reproducibility (Path or None)
+    #
+    # --input is always a DIRECTORY. Specific filenames within it are declared
+    # as skill params (e.g. --phe-file, --geno-file) and resolved via:
+    #   input_dir = Path(args.input)
+    #   phe_path = input_dir / args.phe_file
 
     if args.demo:
         # generate or load demo data into args.work_dir
         mode = "demo"
     else:
-        # load from args.input
+        # --input is a directory; resolve specific files within it
+        input_dir = Path(args.input)
         mode = "input"
 
     # ... your computation, write intermediate files to args.work_dir ...

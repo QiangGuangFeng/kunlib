@@ -26,6 +26,7 @@ def generate_catalog(
         "skills": [
             {
                 "name": m.name,
+                "kind": m.kind,
                 "version": m.version,
                 "description": m.description,
                 "author": m.author,
