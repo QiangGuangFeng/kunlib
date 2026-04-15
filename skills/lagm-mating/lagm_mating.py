@@ -111,6 +111,7 @@ def _write_report(
 
 @skill(
     name="lagm-mating",
+    kind="data",
     version="0.1.0",
     description="Generate optimal mating plans balancing genetic gain and diversity via lagm::lagm_plan()",
     author="kzy599",

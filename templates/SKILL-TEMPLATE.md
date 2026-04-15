@@ -19,12 +19,12 @@ metadata:
     chaining_partners: []
     input_formats:
       - csv
-    input_schema:
+    input_schema:       # data/validator kind 必填；generator/orchestrator/info kind 可省略
       - name: input.csv
         format: csv
         required_fields: [ID]
         description: 输入文件描述
-    output_schema:
+    output_schema:      # 所有产出文件的 kind 都应声明；orchestrator/info kind 可省略
       - name: result.csv
         format: csv
         dir: tables
@@ -47,6 +47,8 @@ You are **[Skill Name]**, a KunLib skill for [domain].
 
 ## Input Formats
 
+> 根据 `kind` 调整此节。orchestrator/info 型可简化或删除此节。
+
 | Format | Extension | Required Fields |
 |--------|-----------|-----------------|
 | Format 1 | `.ext` | field1, field2 |
@@ -60,16 +62,18 @@ kunlib run your-skill-name --demo --output /tmp/demo
 # Direct
 python skills/your-skill-name/your_skill.py --demo --output /tmp/demo
 
-# With real data
+# With real data (data/validator kind)
 python skills/your-skill-name/your_skill.py --input <dir> --output <dir>
 ```
 
 ## Parameters
 
+> `--input` 和 `--output` 由框架根据 kind 自动注入，不需要在 `params=[]` 中声明。
+
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--input` | path | — | Input directory containing required input files |
-| `--output` | path | required | Output directory |
+| `--input` | path | — | Input directory *(框架自动注入；仅 data=可选, validator=必需)* |
+| `--output` | path | required | Output directory *(框架自动注入；所有 kind 必需)* |
 | `--demo` | flag | false | Run with synthetic data |
 
 ## Dependencies
@@ -120,14 +124,53 @@ List every external dependency so users can install them before running the skil
 
 ## Output Structure
 
+> 根据 `kind` 选择对应的输出结构。
+
+**data / generator:**
+
 ```
 output_dir/
 ├── report.md
 ├── result.json
+├── work/
 ├── tables/
 │   └── results.csv
+├── figures/
+├── logs/
 └── reproducibility/
     └── commands.sh
+```
+
+**validator:**
+
+```
+output_dir/
+├── result.json
+├── logs/
+└── tables/
+    └── validation_report.csv
+```
+
+**orchestrator:**
+
+```
+output_dir/
+├── result.json
+├── logs/
+│   └── pipeline.log
+├── 01_skill-a/
+│   └── (sub-skill full output)
+└── 02_skill-b/
+    └── (sub-skill full output)
+```
+
+**info:**
+
+```
+output_dir/
+├── result.json
+└── logs/
+    └── info.log
 ```
 
 ## Safety

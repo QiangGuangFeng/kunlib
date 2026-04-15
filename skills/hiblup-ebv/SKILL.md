@@ -148,9 +148,13 @@ python skills/hiblup-ebv/hiblup_ebv.py --input /path/to/data --output /tmp/hiblu
 output_dir/
 ├── report.md
 ├── result.json
-├── phe_ebv.csv
-├── sel_ebv.csv
-├── ref_ebv.csv
+├── work/                  # R 脚本中间文件（含原始 EBV 输出）
+├── tables/
+│   ├── phe_ebv.csv        # 全部个体 EBV
+│   ├── sel_ebv.csv        # 选择集 EBV
+│   └── ref_ebv.csv        # 参考集 EBV
+├── figures/
+├── logs/
 └── reproducibility/
     └── commands.sh
 ```

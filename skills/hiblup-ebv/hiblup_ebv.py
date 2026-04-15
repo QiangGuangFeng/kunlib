@@ -107,6 +107,7 @@ def _write_report(output_dir: Path, mode: str, summary: dict) -> Path:
 
 @skill(
     name="hiblup-ebv",
+    kind="data",
     version="0.1.0",
     description="Estimate breeding values (EBV) using GBLUP via HI-BLUP",
     author="kzy599",
