@@ -140,11 +140,8 @@ def _write_report(output_dir: Path, mode: str, summary: dict) -> Path:
     emoji="🐄",
     params=[
         # --input 和 --output 由框架自动注入，不需要声明
+        # --phe-file, --geno-file, --sel-id-file, --ref-id-file 由框架根据 input_schema 自动生成
         Param("demo", is_flag=True, help="使用 filegenerator.r 生成合成数据并运行"),
-        Param("phe-file", default="phe.csv", help="输入目录中的表型文件名"),
-        Param("geno-file", default="geno.csv", help="输入目录中的基因型文件名"),
-        Param("sel-file", default="sel_id.csv", help="输入目录中的选择集 ID 文件名"),
-        Param("ref-file", default="ref_id.csv", help="输入目录中的参考集 ID 文件名"),
         Param("trait-pos", type=int, default=4, help="hiblup 表型列位置 (1-based)"),
         Param("threads", type=int, default=32, help="hiblup/plink 线程数"),
         Param("plink-format", is_flag=True, help="基因型文件已是 plink 格式时启用"),
@@ -187,11 +184,11 @@ def run(args: argparse.Namespace) -> KunResult:
 
     # --- resolve individual input files ---
     phe_path, geno_path, sel_path, ref_path = _resolve_input_paths(
-        input_dir, args.phe_file, args.geno_file, args.sel_file, args.ref_file,
+        input_dir, args.phe_file, args.geno_file, args.sel_id_file, args.ref_id_file,
     )
 
     # --- validate inputs ---
-    required = [args.phe_file, args.geno_file, args.sel_file, args.ref_file]
+    required = [args.phe_file, args.geno_file, args.sel_id_file, args.ref_id_file]
     missing = _validate_input(input_dir, required)
     if missing:
         raise SystemExit(

@@ -108,10 +108,10 @@ python skills/hiblup-ebv/hiblup_ebv.py --input /path/to/data --output /tmp/hiblu
 | `--input` | path | — | Input directory containing CSV files *(framework-injected)* |
 | `--output` | path | required | Output directory *(framework-injected)* |
 | `--demo` | flag | false | 使用 filegenerator.r 生成合成数据并运行 |
-| `--phe-file` | str | `phe.csv` | 输入目录中的表型文件名 |
-| `--geno-file` | str | `geno.csv` | 输入目录中的基因型文件名 |
-| `--sel-file` | str | `sel_id.csv` | 输入目录中的选择集 ID 文件名 |
-| `--ref-file` | str | `ref_id.csv` | 输入目录中的参考集 ID 文件名 |
+| `--phe-file` | str | `phe.csv` | 输入目录中的表型文件名 *(框架根据 input_schema 自动生成)* |
+| `--geno-file` | str | `geno.csv` | 输入目录中的基因型文件名 *(框架根据 input_schema 自动生成)* |
+| `--sel-id-file` | str | `sel_id.csv` | 输入目录中的选择集 ID 文件名 *(框架根据 input_schema 自动生成)* |
+| `--ref-id-file` | str | `ref_id.csv` | 输入目录中的参考集 ID 文件名 *(框架根据 input_schema 自动生成)* |
 | `--trait-pos` | int | 4 | hiblup 表型列位置 (1-based) |
 | `--threads` | int | 32 | hiblup/plink 线程数 |
 | `--plink-format` | flag | false | 基因型文件已是 plink 格式时启用 |
