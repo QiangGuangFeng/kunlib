@@ -545,7 +545,7 @@ External developers can add a skill with minimal effort using the prompt templat
 
 1. Fork this repo
 2. Put your script in `skills/<skill-name>/`
-3. Fill in the 6-item prompt from [`templates/ADD-SKILL-PROMPT.md`](templates/ADD-SKILL-PROMPT.md)
+3. Fill in the 7-item prompt from [`templates/ADD-SKILL-PROMPT.md`](templates/ADD-SKILL-PROMPT.md)
 4. @copilot with the prompt — agent handles all the conversion
 
 For the full manual conversion process, see the section below.
@@ -775,9 +775,12 @@ kunlib list
 # Does kunlib run it?
 kunlib run <name> --demo --output /tmp/test
 
-# Standard dirs created?
+# Check output structure matches kind
 ls /tmp/test/
-# → work/  tables/  figures/  logs/  reproducibility/  result.json  report.md
+# data/generator → work/ tables/ figures/ logs/ reproducibility/ result.json
+# validator      → logs/ tables/ result.json
+# orchestrator   → logs/ result.json 01_xxx/ 02_xxx/
+# info           → logs/ result.json
 
 # Do tests pass?
 pytest tests/ -v
