@@ -116,7 +116,7 @@ class SkillMeta:
 
         框架自动注入:
           --output  输出目录（必需，所有 kind 均注入）
-          --input   输入文件或目录（根据 kind 决定是否注入及是否 required）
+          --input   输入目录（根据 kind 决定是否注入及是否 required）
         """
         parser = argparse.ArgumentParser(
             prog=f"kunlib run {self.name}",
@@ -131,7 +131,7 @@ class SkillMeta:
             parser.add_argument(
                 "--input",
                 required=input_cfg["required"],
-                help="Input file or directory",
+                help="Input directory containing all required input files for this skill",
             )
 
         # ---- 技能自定义参数 ----
@@ -258,7 +258,7 @@ def skill(
         )
         def run(args: argparse.Namespace) -> KunResult:
             # 框架自动提供:
-            #   args.input       输入路径（可选）
+            #   args.input       输入目录路径（仅 data/validator kind）
             #   args.output      输出路径字符串
             #   args.output_dir  输出 Path 对象
             #   args.work_dir    中间文件目录

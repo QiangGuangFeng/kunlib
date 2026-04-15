@@ -61,14 +61,14 @@ kunlib run your-skill-name --demo --output /tmp/demo
 python skills/your-skill-name/your_skill.py --demo --output /tmp/demo
 
 # With real data
-python skills/your-skill-name/your_skill.py --input <file> --output <dir>
+python skills/your-skill-name/your_skill.py --input <dir> --output <dir>
 ```
 
 ## Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--input` | path | — | Input file or directory |
+| `--input` | path | — | Input directory containing required input files |
 | `--output` | path | required | Output directory |
 | `--demo` | flag | false | Run with synthetic data |
 
