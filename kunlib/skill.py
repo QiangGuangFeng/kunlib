@@ -27,6 +27,27 @@ STANDARD_DIRS = ("work", "tables", "figures", "logs", "reproducibility")
 # 框架保留的参数名，开发者在 params 中声明会被静默跳过
 _RESERVED_PARAMS = {"input", "output"}
 
+# 技能类型
+SKILL_KINDS = ("data", "generator", "orchestrator", "validator", "info")
+
+# 每种 kind 自动创建的子目录
+KIND_DIRS: dict[str, tuple[str, ...]] = {
+    "data":         ("work", "tables", "figures", "logs", "reproducibility"),
+    "generator":    ("work", "tables", "figures", "logs", "reproducibility"),
+    "orchestrator": ("logs",),
+    "validator":    ("logs", "tables"),
+    "info":         ("logs",),
+}
+
+# 每种 kind 的 --input 注入策略
+KIND_INPUT: dict[str, dict[str, bool]] = {
+    "data":         {"inject": True,  "required": False},
+    "generator":    {"inject": False, "required": False},
+    "orchestrator": {"inject": False, "required": False},
+    "validator":    {"inject": True,  "required": True},
+    "info":         {"inject": False, "required": False},
+}
+
 
 @dataclass
 class Param:
@@ -68,6 +89,7 @@ class IOField:
 class SkillMeta:
     """技能元信息，由 @skill 装饰器自动填充。"""
     name: str
+    kind: str = "data"
     version: str = "0.1.0"
     description: str = ""
     author: str = ""
@@ -93,16 +115,24 @@ class SkillMeta:
         """从 self.params 自动构建 ArgumentParser。
 
         框架自动注入:
-          --input   输入文件或目录（可选，demo 模式下可省略）
-          --output  输出目录（必需）
+          --output  输出目录（必需，所有 kind 均注入）
+          --input   输入文件或目录（根据 kind 决定是否注入及是否 required）
         """
         parser = argparse.ArgumentParser(
             prog=f"kunlib run {self.name}",
             description=self.description,
         )
-        # ---- 框架强制参数 ----
-        parser.add_argument("--input", help="Input file or directory")
+        # ---- --output 永远必需 ----
         parser.add_argument("--output", required=True, help="Output directory (required)")
+
+        # ---- --input 根据 kind 决定是否注入及是否 required ----
+        input_cfg = KIND_INPUT[self.kind]
+        if input_cfg["inject"]:
+            parser.add_argument(
+                "--input",
+                required=input_cfg["required"],
+                help="Input file or directory",
+            )
 
         # ---- 技能自定义参数 ----
         for p in self.params:
@@ -121,37 +151,46 @@ class SkillMeta:
     def run_cli(self, argv: list[str] | None = None) -> KunResult:
         """解析命令行参数 → 准备标准目录 → 执行 entry_func → 保存结果。
 
-        框架自动创建标准输出目录结构:
-          output/
-          ├── work/              中间/临时文件
-          ├── tables/            最终表格
-          ├── figures/           最终图片
-          ├── logs/              运行日志
-          ├── reproducibility/   复现指令
-          └── result.json        框架自动写
+        框架根据 kind 创建对应的输出目录结构:
+          所有 kind 都保证:
+            output/
+            ├── logs/              运行日志
+            └── result.json        框架自动写
+
+          data / generator 额外创建:
+            ├── work/              中间/临时文件
+            ├── tables/            最终表格
+            ├── figures/           最终图片
+            └── reproducibility/   复现指令
+
+          validator 额外创建:
+            └── tables/            校验报告
 
         技能通过 args.output_dir / args.work_dir / args.tables_dir /
         args.figures_dir / args.logs_dir / args.repro_dir 访问这些目录。
+        未创建的目录属性注入为 None。
         """
         parser = self.build_parser()
         args = parser.parse_args(argv)
 
-        # ---- 创建标准目录结构并注入到 args ----
+        # ---- 创建目录结构并注入到 args ----
         output_dir = Path(args.output).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        dirs = {}
-        for d in STANDARD_DIRS:
+        dirs: dict[str, Path] = {}
+        for d in KIND_DIRS[self.kind]:
             p = output_dir / d
             p.mkdir(exist_ok=True)
             dirs[d] = p
 
         args.output_dir = output_dir
-        args.work_dir = dirs["work"]
-        args.tables_dir = dirs["tables"]
-        args.figures_dir = dirs["figures"]
         args.logs_dir = dirs["logs"]
-        args.repro_dir = dirs["reproducibility"]
+
+        # 按需注入其他目录（kind 不创建的目录设为 None）
+        args.work_dir    = dirs.get("work")
+        args.tables_dir  = dirs.get("tables")
+        args.figures_dir = dirs.get("figures")
+        args.repro_dir   = dirs.get("reproducibility")
 
         # ---- 执行技能 ----
         result = self.entry_func(args)
@@ -187,6 +226,7 @@ def get_registry() -> dict[str, SkillMeta]:
 def skill(
     name: str,
     *,
+    kind: str = "data",
     version: str = "0.1.0",
     description: str = "",
     author: str = "",
@@ -232,6 +272,9 @@ def skill(
             run.__kunlib_meta__.run_cli()
     """
     def decorator(func: Callable) -> Callable:
+        if kind not in SKILL_KINDS:
+            raise ValueError(f"Invalid skill kind '{kind}', must be one of {SKILL_KINDS}")
+
         # Merge requires_bins (legacy) into requires.bins
         effective_requires = requires if requires is not None else SkillRequires()
         if requires_bins:
@@ -240,6 +283,7 @@ def skill(
 
         meta = SkillMeta(
             name=name,
+            kind=kind,
             version=version,
             description=description,
             author=author,

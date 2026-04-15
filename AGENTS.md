@@ -108,6 +108,58 @@ These are injected into `args` and accessible as:
 `result.json` is written automatically by the framework after `run()` returns.
 The skill does NOT need to call `result.save()`.
 
+## Skill Kinds — 技能类型声明
+
+每个技能通过 `@skill(kind=...)` 声明类型。`--output` **对所有类型都是必需的**，
+框架保证每次执行都会产出 `result.json` + `logs/`，使 agent 可追踪任何技能的执行状态。
+
+### 类型总览
+
+| kind | `--input` | 创建的子目录 | 用途 |
+|------|-----------|-------------|------|
+| `data` (默认) | 注入，可选 | work/ tables/ figures/ logs/ reproducibility/ | 读数据→算→出结果 |
+| `generator` | 不注入 | work/ tables/ figures/ logs/ reproducibility/ | 凭空生成数据 |
+| `orchestrator` | 不注入 | logs/ 仅此 | 编排多个技能的调用链 |
+| `validator` | 注入，**必需** | logs/ tables/ | 校验输入数据合规性 |
+| `info` | 不注入 | logs/ 仅此 | 查询环境/版本/配置信息 |
+
+### 规则
+
+1. **所有类型都必须 `return KunResult(...)`** — 这是框架的核心契约
+2. **所有类型的 `result.json` 都由框架自动写** — 技能不需要手动 save
+3. **`kind` 未声明时默认为 `"data"`** — 向后兼容现有技能
+4. **编排型技能** 必须在 `output/` 下为每个子技能创建编号子目录 (`01_<skill-name>/`, `02_<skill-name>/`)
+5. **`args.work_dir` 等目录在未创建的 kind 下为 `None`** — 技能应检查后再使用
+
+### Orchestrator 编排型约定
+
+编排型技能在自己的 `--output` 下为每个子技能创建独立子目录：
+
+    output/                          ← 编排技能的 --output
+    ├── result.json                  ← 编排技能自己的结果（记录流程状态）
+    ├── logs/                        ← 编排技能日志
+    ├── 01_hiblup-ebv/               ← 子技能1的完整输出
+    │   ├── result.json
+    │   ├── work/ tables/ figures/ ...
+    ├── 02_lagm-mating/              ← 子技能2的完整输出
+    │   ├── result.json
+    │   ├── work/ tables/ figures/ ...
+
+编排型技能的 `result.json` 记录调用链状态：
+
+    {
+      "skill": "breeding-pipeline",
+      "summary": {
+        "steps": [
+          {"skill": "hiblup-ebv", "status": "success", "output": "01_hiblup-ebv/"},
+          {"skill": "lagm-mating", "status": "success", "output": "02_lagm-mating/"}
+        ],
+        "total_steps": 2,
+        "completed": 2,
+        "failed": 0
+      }
+    }
+
 ## Skill Script Template
 
 ```python

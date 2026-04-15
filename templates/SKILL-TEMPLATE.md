@@ -7,6 +7,7 @@ author: Your Name
 tags: [tag1, tag2]
 metadata:
   kunlib:
+    kind: data  # data | generator | orchestrator | validator | info
     requires:
       bins: [python3]
       r_packages: []
