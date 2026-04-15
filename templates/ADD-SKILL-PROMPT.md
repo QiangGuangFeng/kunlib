@@ -62,7 +62,7 @@ Demo 数据有两种来源，agent 会自动选择最合适的方式：
 描述: <填写技能的简要描述，一句话>
 技能类型: <data / generator / orchestrator / validator / info，不确定就填 data>
 脚本语言: <Python / R / Shell / 混合 / 无脚本（仅描述）>
-输入: <描述输入文件及格式，如 "phe.csv(ID+表型列) + geno.csv(0/1/2基因型矩阵)"。编排型填调用的子技能名，info型填"无">
+输入: <描述输入文件及格式，如 "phe.csv(ID+表型列) + geno.csv(0/1/2基因型矩阵)"，注意名字要简要易懂，后续会被框架自动注册为参数。编排型填调用的子技能名，info型填"无">
 输出: <描述关键输出文件，如 "ebv_result.csv(ID+EBV列), manhattan.png"。编排型填"子技能各自输出"，info型填"无/仅日志">
 依赖: <列出所有外部依赖及安装方式，如 "plink 1.9(conda -c bioconda), R/data.table(CRAN), hiblup(手动下载 https://hiblup.github.io/)"。info型填"无">
 
