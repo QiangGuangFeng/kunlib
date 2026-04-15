@@ -29,6 +29,7 @@ class KunResult:
     """
     skill_name: str
     skill_version: str
+    kind: str = "data"
     mode: str = "input"
     output_dir: Path | None = None
     summary: dict[str, Any] = field(default_factory=dict)
@@ -51,6 +52,7 @@ class KunResult:
         return {
             "skill": self.skill_name,
             "version": self.skill_version,
+            "kind": self.kind,
             "completed_at": datetime.now(timezone.utc).isoformat(),
             "mode": self.mode,
             "output_dir": str(self.output_dir) if self.output_dir else None,

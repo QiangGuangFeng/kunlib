@@ -201,6 +201,10 @@ class SkillMeta:
                 f"[{self.name}] run() must return KunResult, got {type(result).__name__}"
             )
 
+        # 自动补全 kind（技能可以不手动设置，框架从 meta 补上）
+        if result.kind == "data" and self.kind != "data":
+            result.kind = self.kind
+
         # 自动补全 output_dir
         if result.output_dir is None:
             result.output_dir = output_dir
