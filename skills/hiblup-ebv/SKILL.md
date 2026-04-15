@@ -9,6 +9,7 @@ license: MIT
 tags: [animal-breeding, gblup, ebv, hiblup, quantitative-genetics, genomic-selection]
 metadata:
   kunlib:
+    kind: data
     requires:
       bins: [python3, Rscript, plink, hiblup]
       r_packages: [data.table]
@@ -29,6 +30,36 @@ metadata:
       - gwas-prs
     input_formats:
       - csv-dir (phe.csv + geno.csv + sel_id.csv + ref_id.csv)
+    input_schema:
+      - name: phe.csv
+        format: csv
+        required_fields: [ID]
+        description: 表型文件，第1列ID，目标性状列由 --trait-pos 指定
+      - name: geno.csv
+        format: csv
+        required_fields: [ID]
+        description: 基因型矩阵，第1列ID，其余列为SNP标记(0/1/2编码)
+      - name: sel_id.csv
+        format: csv
+        required_fields: [ID]
+        description: 选择集个体ID列表
+      - name: ref_id.csv
+        format: csv
+        required_fields: [ID]
+        description: 参考集个体ID列表
+    output_schema:
+      - name: phe_ebv.csv
+        format: csv
+        dir: tables
+        description: 全部个体的EBV估计结果
+      - name: sel_ebv.csv
+        format: csv
+        dir: tables
+        description: 选择集个体的EBV估计结果
+      - name: ref_ebv.csv
+        format: csv
+        dir: tables
+        description: 参考集个体的EBV估计结果
 ---
 
 # 🐄 HI-BLUP EBV

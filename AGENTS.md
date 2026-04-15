@@ -64,9 +64,14 @@ Every skill has two required files:
 2. **<script>.py** — Python implementation using `@skill` decorator
 
 The script MUST:
-- `from kunlib import skill, Param, KunResult`
+- `from kunlib import skill, Param, KunResult, SkillRequires, IOField`
 - Use `@skill(...)` decorator on its main `run()` function
-- Only declare skill-specific params (`--input`/`--output` auto-injected by framework)
+- Declare `kind=` in `@skill()` — default is `"data"`, see §Skill Kinds for all types
+- Only declare skill-specific params (`--input`/`--output` auto-injected by framework based on kind)
+- For `data`/`validator` kind: `--input` is always a **directory path**; declare file-name params (e.g. `--phe-file`) separately to specify which files within the directory to read
+- Declare `input_schema=[IOField(...)]` for every required input file (data/validator kind)
+- Declare `output_schema=[IOField(...)]` for every output file the skill produces
+- Declare `requires=SkillRequires(bins=[...], r_packages=[...], ...)` for all dependencies
 - Return a `KunResult` from `run()`
 - Have `if __name__ == "__main__": run.__kunlib_meta__.run_cli()`
 
@@ -74,33 +79,49 @@ The script MUST:
 
 ### Auto parameters
 
-`--input` (input directory) and `--output` (output directory) are **automatically injected** by the framework. `--input` is always a **directory path** — skills must define their own params (e.g. `--phe-file`, `--geno-file`) to specify which files within `--input` to read. This design ensures traceability: agent and user always know which directory was used as input. Do NOT declare them in `params=[...]`. `--output` is always required.
+`--output` (output directory) is **always** automatically injected by the framework and is **always required**.
+
+`--input` (input directory) injection depends on `kind`:
+- **Injected and optional**: `kind="data"` — skill can fall back to `--demo` mode when `--input` is omitted
+- **Injected and required**: `kind="validator"` — must validate input data, so `--input` is mandatory
+- **Not injected**: `kind="generator"`, `kind="orchestrator"`, `kind="info"` — passing `--input` on CLI will cause an argparse error
+
+`--input` is always a **directory path**, not a file path. Skills declare file-name params (e.g. `--phe-file`, `--geno-file`) to specify which files within `--input` to read. This design ensures traceability: when chaining skills, set the previous skill's output directory as the next skill's `--input`.
+
+Do NOT declare `--input` or `--output` in `params=[...]` — the framework injects them automatically.
 
 ### Auto directory structure
 
-When `run_cli()` is called, the framework creates the following directories
-under `--output` **before** calling `run()`:
+When `run_cli()` is called, the framework creates directories under `--output`
+**based on the skill's `kind`** before calling `run()`:
 
-```
-output/
-├── work/              # Intermediate/temp files (R workdir, PLINK outputs, etc.)
-├── tables/            # Final tabular results
-├── figures/           # Final plots/images
-├── logs/              # Run logs
-├── reproducibility/   # Commands to reproduce
-└── result.json        # Auto-written by framework after run() returns
-```
+**All kinds** (always created):
+- `output/logs/` — Run logs
+- `output/result.json` — Auto-written by framework after `run()` returns
 
-These are injected into `args` and accessible as:
+**`data` and `generator` kind** (additionally created):
+- `output/work/` — Intermediate/temp files
+- `output/tables/` — Final tabular results
+- `output/figures/` — Final plots/images
+- `output/reproducibility/` — Commands to reproduce
 
-| `args` attribute | Path | Purpose |
-|------------------|------|---------|
-| `args.output_dir` | `output/` | Top-level output dir (Path object) |
-| `args.work_dir` | `output/work/` | Intermediate files |
-| `args.tables_dir` | `output/tables/` | Final tables |
-| `args.figures_dir` | `output/figures/` | Final figures |
-| `args.logs_dir` | `output/logs/` | Logs |
-| `args.repro_dir` | `output/reproducibility/` | Reproducibility |
+**`validator` kind** (additionally created):
+- `output/tables/` — Validation reports
+
+**`orchestrator` and `info` kind**: Only `logs/` and `result.json`.
+
+These are injected into `args`:
+
+| `args` attribute | `data`/`generator` | `validator` | `orchestrator`/`info` |
+|------------------|-------------------|-------------|----------------------|
+| `args.output_dir` | `Path` ✅ | `Path` ✅ | `Path` ✅ |
+| `args.logs_dir` | `Path` ✅ | `Path` ✅ | `Path` ✅ |
+| `args.work_dir` | `Path` ✅ | `None` ❌ | `None` ❌ |
+| `args.tables_dir` | `Path` ✅ | `Path` ✅ | `None` ❌ |
+| `args.figures_dir` | `Path` ✅ | `None` ❌ | `None` ❌ |
+| `args.repro_dir` | `Path` ✅ | `None` ❌ | `None` ❌ |
+
+⚠️ **`None` means the directory was NOT created.** Accessing `None / "file.csv"` will raise `TypeError`. Skills must check before use, or simply use the correct `kind` for their purpose.
 
 ### Auto result.json
 
@@ -125,34 +146,40 @@ The skill does NOT need to call `result.save()`.
 ### 规则
 
 1. **所有类型都必须 `return KunResult(...)`** — 这是框架的核心契约
-2. **所有类型的 `result.json` 都由框架自动写** — 技能不需要手动 save
+2. **所有类型的 `result.json` 都由框架自动写** — 技能不需要手动调用 `result.save()`
 3. **`kind` 未声明时默认为 `"data"`** — 向后兼容现有技能
-4. **编排型技能** 必须在 `output/` 下为每个子技能创建编号子目录 (`01_<skill-name>/`, `02_<skill-name>/`)
-5. **`args.work_dir` 等目录在未创建的 kind 下为 `None`** — 技能应检查后再使用
-6. **`--input` 永远是目录路径** — 技能内的具体文件名（如 `phe.csv`, `geno.csv`）通过技能自己的 Param 声明（如 `--phe-file`、`--geno-file`），技能代码中通过 `Path(args.input) / args.phe_file` 拼接。这样设计是为了输入可追溯，agent 在上下游串联技能时，只需指定前一个技能的输出目录作为下一个技能的 `--input`。
+4. **`args.work_dir` 等目录在未创建的 kind 下为 `None`** — 技能使用前应检查，或直接选择正确的 kind
+5. **`--input` 永远是目录路径** — 技能内的具体文件名（如 `phe.csv`, `geno.csv`）通过技能自己的 Param 声明（如 `--phe-file`、`--geno-file`），技能代码中通过 `Path(args.input) / args.phe_file` 拼接。这样设计是为了输入可追溯，agent 在上下游串联技能时，只需指定前一个技能的输出目录作为下一个技能的 `--input`
+6. **所有类型都应在 `logs/` 中记录关键执行信息** — 至少包含：执行了什么、开始/结束时间、成功/失败状态。对于 orchestrator 还应记录调用了哪些子技能
 
 ### Orchestrator 编排型约定
 
-编排型技能在自己的 `--output` 下为每个子技能创建独立子目录：
+编排型技能本身不做数据计算，它的职责是按顺序调用其他技能并记录流程状态。
+
+**目录约定（推荐，非框架强制）**：在 `output/` 下为每个子技能创建编号子目录：
 
     output/                          ← 编排技能的 --output
     ├── result.json                  ← 编排技能自己的结果（记录流程状态）
-    ├── logs/                        ← 编排技能日志
+    ├── logs/
+    │   └── pipeline.log             ← 记录调用了哪些技能、每步状态
     ├── 01_hiblup-ebv/               ← 子技能1的完整输出
     │   ├── result.json
     │   ├── work/ tables/ figures/ ...
-    ├── 02_lagm-mating/              ← 子技能2的完整输出
-    │   ├── result.json
-    │   ├── work/ tables/ figures/ ...
+    └── 02_lagm-mating/              ← 子技能2的完整输出
+        ├── result.json
+        ├── work/ tables/ figures/ ...
 
-编排型技能的 `result.json` 记录调用链状态：
+**logs/ 最低要求**：记录调用了哪个子技能、每步的开始/结束时间、每步的 status (success/failed)、每步的输出目录路径。
+
+**result.json summary 约定**：
 
     {
       "skill": "breeding-pipeline",
+      "kind": "orchestrator",
       "summary": {
         "steps": [
-          {"skill": "hiblup-ebv", "status": "success", "output": "01_hiblup-ebv/"},
-          {"skill": "lagm-mating", "status": "success", "output": "02_lagm-mating/"}
+          {"step": 1, "skill": "hiblup-ebv", "status": "success", "output": "01_hiblup-ebv/"},
+          {"step": 2, "skill": "lagm-mating", "status": "success", "output": "02_lagm-mating/"}
         ],
         "total_steps": 2,
         "completed": 2,
@@ -160,7 +187,11 @@ The skill does NOT need to call `result.save()`.
       }
     }
 
-## Skill Script Template
+## Skill Script Templates — 按 kind 分类
+
+Agent 注册技能时，根据 kind 选择对应的模板。**必须严格按照模板中的 `@skill()` 参数和 `run()` 函数结构来写。**
+
+### Template: `kind="data"`（默认，数据处理型）
 
 ```python
 #!/usr/bin/env python3
@@ -169,50 +200,51 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from kunlib import skill, Param, KunResult
+from kunlib import skill, Param, KunResult, SkillRequires, IOField
 
 SKILL_DIR = Path(__file__).resolve().parent
 
 @skill(
     name="your-skill-name",          # must match folder name
+    kind="data",
     version="0.1.0",
     description="What this skill does in one line",
     author="your-name",
     tags=["tag1", "tag2"],
     trigger_keywords=["keyword1", "keyword2"],
     emoji="🧬",
+    requires=SkillRequires(bins=["python3"], r_packages=[], python_packages=[]),
+    input_schema=[
+        IOField(name="input.csv", format="csv", required_fields=["ID"], description="..."),
+    ],
+    output_schema=[
+        IOField(name="result.csv", format="csv", dir="tables", description="..."),
+    ],
     params=[
         # --input and --output are auto-injected, do NOT list here
         Param("demo", is_flag=True, help="Run with synthetic data"),
-        # add more Param(...) as needed
+        Param("input-file", default="input.csv", help="Filename within --input directory"),
     ],
 )
 def run(args: argparse.Namespace) -> KunResult:
-    # Framework provides:
-    #   args.input       → input directory path (str; only for data/validator kind)
-    #   args.output_dir  → output directory (Path)
-    #   args.work_dir    → intermediate files (Path or None)
-    #   args.tables_dir  → final tables (Path or None)
-    #   args.figures_dir → final figures (Path or None)
-    #   args.logs_dir    → run logs (Path, always available)
-    #   args.repro_dir   → reproducibility (Path or None)
-    #
-    # --input is always a DIRECTORY. Specific filenames within it are declared
-    # as skill params (e.g. --phe-file, --geno-file) and resolved via:
-    #   input_dir = Path(args.input)
-    #   phe_path = input_dir / args.phe_file
+    # Available for data kind:
+    #   args.input       → input directory path (str, optional)
+    #   args.output_dir  → Path ✅    args.logs_dir    → Path ✅
+    #   args.work_dir    → Path ✅    args.tables_dir  → Path ✅
+    #   args.figures_dir → Path ✅    args.repro_dir   → Path ✅
 
     if args.demo:
-        # generate or load demo data into args.work_dir
+        input_dir = args.work_dir  # generate demo data here
         mode = "demo"
     else:
-        # --input is a directory; resolve specific files within it
         input_dir = Path(args.input)
         mode = "input"
 
-    # ... your computation, write intermediate files to args.work_dir ...
-    # ... copy final tables to args.tables_dir ...
-    # ... copy final figures to args.figures_dir ...
+    input_path = input_dir / args.input_file
+
+    # ... your computation ...
+    # ... write intermediate files to args.work_dir ...
+    # ... write final tables to args.tables_dir ...
 
     return KunResult(
         skill_name="your-skill-name",
@@ -220,11 +252,285 @@ def run(args: argparse.Namespace) -> KunResult:
         mode=mode,
         output_dir=args.output_dir,
         summary={"key_metric": 42},
-        files={
-            "tables": [args.tables_dir / "results.csv"],
-            "figures": [args.figures_dir / "plot.png"],
-        },
+        files={"tables": [args.tables_dir / "result.csv"]},
         report_path=args.output_dir / "report.md",
+    )
+
+if __name__ == "__main__":
+    run.__kunlib_meta__.run_cli()
+```
+
+### Template: `kind="generator"`（生成型）
+
+```python
+#!/usr/bin/env python3
+"""<Generator Name> — generate synthetic data."""
+from __future__ import annotations
+import argparse
+from pathlib import Path
+
+from kunlib import skill, Param, KunResult, SkillRequires, IOField
+
+SKILL_DIR = Path(__file__).resolve().parent
+
+@skill(
+    name="your-generator-name",
+    kind="generator",
+    version="0.1.0",
+    description="Generate synthetic data for ...",
+    author="your-name",
+    tags=["simulation", "demo-data"],
+    trigger_keywords=["simulate", "generate"],
+    emoji="🎲",
+    requires=SkillRequires(bins=["python3"]),
+    # generator has NO input_schema — it generates data from nothing
+    output_schema=[
+        IOField(name="synthetic_data.csv", format="csv", dir="tables", description="..."),
+    ],
+    params=[
+        Param("n-samples", type=int, default=100, help="Number of samples to generate"),
+    ],
+)
+def run(args: argparse.Namespace) -> KunResult:
+    # Available for generator kind:
+    #   NO args.input — passing --input on CLI will cause argparse error
+    #   args.output_dir  → Path ✅    args.logs_dir    → Path ✅
+    #   args.work_dir    → Path ✅    args.tables_dir  → Path ✅
+    #   args.figures_dir → Path ✅    args.repro_dir   → Path ✅
+
+    # ... generate synthetic data ...
+    out_file = args.tables_dir / "synthetic_data.csv"
+    # ... write to out_file ...
+
+    return KunResult(
+        skill_name="your-generator-name",
+        skill_version="0.1.0",
+        mode="generate",
+        output_dir=args.output_dir,
+        summary={"n_samples": args.n_samples},
+        files={"tables": [out_file]},
+    )
+
+if __name__ == "__main__":
+    run.__kunlib_meta__.run_cli()
+```
+
+### Template: `kind="orchestrator"`（编排型）
+
+```python
+#!/usr/bin/env python3
+"""<Pipeline Name> — orchestrate multiple skills."""
+from __future__ import annotations
+import argparse
+import datetime
+import subprocess
+import sys
+from pathlib import Path
+
+from kunlib import skill, Param, KunResult
+
+SKILL_DIR = Path(__file__).resolve().parent
+
+@skill(
+    name="your-pipeline-name",
+    kind="orchestrator",
+    version="0.1.0",
+    description="Run skill-A then skill-B pipeline",
+    author="your-name",
+    tags=["pipeline", "workflow"],
+    trigger_keywords=["pipeline", "workflow"],
+    chaining_partners=["skill-a", "skill-b"],
+    emoji="🔗",
+    # orchestrator typically has NO input_schema/output_schema
+    # its "outputs" are the sub-skill output directories
+    params=[
+        Param("demo", is_flag=True, help="Run all steps with demo data"),
+    ],
+)
+def run(args: argparse.Namespace) -> KunResult:
+    # Available for orchestrator kind:
+    #   NO args.input — not injected
+    #   args.output_dir → Path ✅    args.logs_dir → Path ✅
+    #   args.work_dir   → None ❌    args.tables_dir  → None ❌
+    #   args.figures_dir→ None ❌    args.repro_dir   → None ❌
+
+    log_lines = []
+    steps = []
+
+    def log(msg):
+        line = f"[{datetime.datetime.now().isoformat()}] {msg}"
+        log_lines.append(line)
+        print(line)
+
+    # Step 1: run skill-a
+    log("Step 1/2: running skill-a")
+    step1_out = args.output_dir / "01_skill-a"
+    step1_out.mkdir(parents=True, exist_ok=True)
+    cmd = [sys.executable, "-m", "kunlib.cli", "run", "skill-a",
+           "--output", str(step1_out)]
+    if args.demo:
+        cmd.append("--demo")
+    result1 = subprocess.run(cmd, capture_output=True, text=True)
+    status1 = "success" if result1.returncode == 0 else "failed"
+    log(f"Step 1/2: skill-a {status1}")
+    steps.append({"step": 1, "skill": "skill-a", "status": status1,
+                   "output": "01_skill-a/"})
+
+    # Step 2: run skill-b, using step 1's output as input
+    log("Step 2/2: running skill-b")
+    step2_out = args.output_dir / "02_skill-b"
+    step2_out.mkdir(parents=True, exist_ok=True)
+    cmd = [sys.executable, "-m", "kunlib.cli", "run", "skill-b",
+           "--input", str(step1_out / "tables"),
+           "--output", str(step2_out)]
+    result2 = subprocess.run(cmd, capture_output=True, text=True)
+    status2 = "success" if result2.returncode == 0 else "failed"
+    log(f"Step 2/2: skill-b {status2}")
+    steps.append({"step": 2, "skill": "skill-b", "status": status2,
+                   "output": "02_skill-b/"})
+
+    # Write pipeline log
+    (args.logs_dir / "pipeline.log").write_text("\n".join(log_lines), encoding="utf-8")
+
+    completed = sum(1 for s in steps if s["status"] == "success")
+    failed = sum(1 for s in steps if s["status"] == "failed")
+
+    return KunResult(
+        skill_name="your-pipeline-name",
+        skill_version="0.1.0",
+        mode="demo" if args.demo else "pipeline",
+        output_dir=args.output_dir,
+        summary={"steps": steps, "total_steps": len(steps),
+                 "completed": completed, "failed": failed},
+        files={"logs": [args.logs_dir / "pipeline.log"]},
+    )
+
+if __name__ == "__main__":
+    run.__kunlib_meta__.run_cli()
+```
+
+### Template: `kind="validator"`（验证型）
+
+```python
+#!/usr/bin/env python3
+"""<Validator Name> — validate input data."""
+from __future__ import annotations
+import argparse
+import csv
+from pathlib import Path
+
+from kunlib import skill, Param, KunResult, SkillRequires, IOField
+
+SKILL_DIR = Path(__file__).resolve().parent
+
+@skill(
+    name="your-validator-name",
+    kind="validator",
+    version="0.1.0",
+    description="Validate input files for ...",
+    author="your-name",
+    tags=["validation", "quality-check"],
+    trigger_keywords=["validate", "check", "校验"],
+    emoji="✅",
+    requires=SkillRequires(bins=["python3"]),
+    input_schema=[
+        IOField(name="data.csv", format="csv", required_fields=["ID"], description="..."),
+    ],
+    output_schema=[
+        IOField(name="validation_report.csv", format="csv", dir="tables", description="..."),
+    ],
+    params=[
+        # --input is auto-injected and REQUIRED for validator kind
+        Param("strict", is_flag=True, help="Fail on warnings"),
+    ],
+)
+def run(args: argparse.Namespace) -> KunResult:
+    # Available for validator kind:
+    #   args.input      → input directory path (str, REQUIRED)
+    #   args.output_dir → Path ✅    args.logs_dir   → Path ✅
+    #   args.tables_dir → Path ✅
+    #   args.work_dir   → None ❌    args.figures_dir→ None ❌
+    #   args.repro_dir  → None ❌
+
+    input_dir = Path(args.input)
+    checks = []
+
+    # ... run validation checks ...
+    # checks.append({"file": "data.csv", "check": "exists", "pass": True})
+
+    all_passed = all(c["pass"] for c in checks)
+
+    # Write validation report
+    report_path = args.tables_dir / "validation_report.csv"
+    with open(report_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["file", "check", "pass", "message"])
+        writer.writeheader()
+        writer.writerows(checks)
+
+    return KunResult(
+        skill_name="your-validator-name",
+        skill_version="0.1.0",
+        mode="input",
+        output_dir=args.output_dir,
+        summary={"valid": all_passed, "checks_passed": sum(1 for c in checks if c["pass"]),
+                 "checks_failed": sum(1 for c in checks if not c["pass"])},
+        files={"tables": [report_path]},
+    )
+
+if __name__ == "__main__":
+    run.__kunlib_meta__.run_cli()
+```
+
+### Template: `kind="info"`（信息型）
+
+```python
+#!/usr/bin/env python3
+"""<Info Name> — query environment or reference information."""
+from __future__ import annotations
+import argparse
+import shutil
+from pathlib import Path
+
+from kunlib import skill, Param, KunResult
+
+SKILL_DIR = Path(__file__).resolve().parent
+
+@skill(
+    name="your-info-name",
+    kind="info",
+    version="0.1.0",
+    description="Check environment or provide reference information",
+    author="your-name",
+    tags=["info", "environment"],
+    trigger_keywords=["check env", "环境检查"],
+    emoji="ℹ️",
+    # info kind typically has NO input_schema/output_schema
+    params=[],
+)
+def run(args: argparse.Namespace) -> KunResult:
+    # Available for info kind:
+    #   NO args.input — not injected
+    #   args.output_dir → Path ✅    args.logs_dir → Path ✅
+    #   args.work_dir   → None ❌    args.tables_dir  → None ❌
+    #   args.figures_dir→ None ❌    args.repro_dir   → None ❌
+
+    # ... gather information ...
+    info = {}
+    for bin_name in ["python3", "Rscript", "plink"]:
+        path = shutil.which(bin_name)
+        info[bin_name] = str(path) if path else "not found"
+
+    # Write info log
+    log_lines = [f"{k}: {v}" for k, v in info.items()]
+    (args.logs_dir / "env_check.log").write_text("\n".join(log_lines), encoding="utf-8")
+
+    return KunResult(
+        skill_name="your-info-name",
+        skill_version="0.1.0",
+        mode="info",
+        output_dir=args.output_dir,
+        summary=info,
+        files={"logs": [args.logs_dir / "env_check.log"]},
     )
 
 if __name__ == "__main__":
@@ -255,6 +561,7 @@ it into a proper KunLib skill.
 ### Step 1: Analyze the Original Script
 
 Identify from the user's script:
+- **Skill kind**: Is this a data-processing, generator, orchestrator, validator, or info skill? Determine the `kind` first — it affects which template to use, which directories are available, and whether `--input` is injected.
 - **Inputs**: What files/directories does it read? What formats?
 - **Outputs**: What files does it produce? Where?
 - **Parameters**: What knobs can the user tune? Types, defaults?
@@ -290,61 +597,14 @@ Naming rules:
 
 ### Step 3: Wrap the Script
 
-Take the user's core logic and wrap it:
+Choose the template from §Skill Script Templates that matches the determined `kind`, then:
 
-```python
-from kunlib import skill, Param, KunResult
+1. Move the user's core logic into a plain function
+2. Fill in the `@skill(...)` decorator with all required fields: `name`, `kind`, `version`, `description`, `author`, `tags`, `trigger_keywords`, `requires`, `input_schema` (if applicable), `output_schema`, `params`
+3. Wire the `run()` function following the chosen template's structure
+4. Ensure `--input` is treated as a directory (for data/validator kind), with individual filenames declared as Param
 
-# 1. Move the user's core logic into a plain function
-def compute_something(input_path, work_dir, tables_dir, param1, param2):
-    # ... user's original code, minimally modified ...
-    # ... write intermediate files to work_dir ...
-    # ... copy final results to tables_dir ...
-    return {"n_results": 42}  # summary dict
-
-# 2. Declare the skill with @skill decorator
-@skill(
-    name="skill-name",
-    version="0.1.0",
-    description="...",
-    params=[
-        # --input and --output auto-injected, do NOT list
-        Param("demo", is_flag=True, help="..."),
-        Param("param1", type=int, default=10, help="..."),
-        Param("param2", type=float, default=0.05, help="..."),
-    ],
-)
-def run(args: argparse.Namespace) -> KunResult:
-    if args.demo:
-        input_path = SKILL_DIR / "demo" / "sample_input.csv"
-        mode = "demo"
-    else:
-        input_path = Path(args.input)
-        mode = "input"
-
-    # 3. Call the user's core logic with framework dirs
-    summary = compute_something(
-        input_path=input_path,
-        work_dir=args.work_dir,
-        tables_dir=args.tables_dir,
-        param1=args.param1,
-        param2=args.param2,
-    )
-
-    # 4. Return KunResult
-    return KunResult(
-        skill_name="skill-name",
-        skill_version="0.1.0",
-        mode=mode,
-        output_dir=args.output_dir,
-        summary=summary,
-        files={"tables": [args.tables_dir / "output.csv"]},
-        report_path=args.output_dir / "report.md",
-    )
-
-if __name__ == "__main__":
-    run.__kunlib_meta__.run_cli()
-```
+See §Skill Script Templates for complete code templates for each kind.
 
 ### Step 4: Conversion Rules
 
@@ -361,11 +621,18 @@ if __name__ == "__main__":
 | Magic numbers | Extract to `Param(...)` with sensible defaults |
 | `sys.exit()` on error | Raise exceptions instead; let kunlib handle exit codes |
 | Relative path imports | Use `SKILL_DIR = Path(__file__).resolve().parent` |
+| No `kind` declaration | Add `kind="data"` (or the appropriate kind) to `@skill()` — agent must determine the correct kind based on script behavior |
+| No `input_schema` / `output_schema` | Add `input_schema=[IOField(...)]` and `output_schema=[IOField(...)]` — document every input and output file |
+| No `requires=SkillRequires(...)` | Add `requires=SkillRequires(bins=[...], r_packages=[...], ...)` — list all dependencies |
+| Script is a pure workflow description | Use `kind="orchestrator"` — no computation, just call other skills in sequence |
+| Script only checks/validates data | Use `kind="validator"` — `--input` will be required, output is a validation report |
 
 ### Step 5: Write SKILL.md
 
 Copy `templates/SKILL-TEMPLATE.md` and fill in every section. Key points:
 - YAML frontmatter `name:` must match the folder name and `@skill(name=...)`
+- YAML frontmatter must include `kind:` field matching the `@skill(kind=...)` value
+- YAML frontmatter must include `input_schema:` and `output_schema:` sections
 - Include real CLI examples that work
 - Document every parameter in the Parameters table
 - Show the exact output directory structure
@@ -405,6 +672,11 @@ clearly state this in the Notes column with the official download URL.
 
 ### Step 6: Write Tests
 
+Tests should verify the skill runs correctly based on its `kind`. Use the
+appropriate assertions for each kind's available directories.
+
+**For `data` kind** (with `--demo`):
+
 ```python
 # tests/test_<skill_name>.py
 from pathlib import Path
@@ -418,9 +690,77 @@ def test_demo_mode(tmp_path):
     )
     assert result.returncode == 0
     assert (tmp_path / "result.json").exists()
-    # Framework auto-creates these dirs
+    # data kind creates all dirs
     assert (tmp_path / "work").is_dir()
     assert (tmp_path / "tables").is_dir()
+    assert (tmp_path / "figures").is_dir()
+    assert (tmp_path / "logs").is_dir()
+    assert (tmp_path / "reproducibility").is_dir()
+```
+
+**For `generator` kind**:
+
+```python
+def test_generate(tmp_path):
+    script = Path(__file__).resolve().parent.parent / "<skill_name>.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "--output", str(tmp_path)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0
+    assert (tmp_path / "result.json").exists()
+    # generator kind creates same dirs as data
+    assert (tmp_path / "tables").is_dir()
+```
+
+**For `validator` kind** (requires `--input`):
+
+```python
+def test_validate(tmp_path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    # ... create minimal test input files in input_dir ...
+    output_dir = tmp_path / "output"
+    script = Path(__file__).resolve().parent.parent / "<skill_name>.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "--input", str(input_dir), "--output", str(output_dir)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0
+    assert (output_dir / "result.json").exists()
+    # validator kind creates logs/ and tables/ only
+    assert (output_dir / "tables").is_dir()
+    assert (output_dir / "logs").is_dir()
+```
+
+**For `orchestrator` kind**:
+
+```python
+def test_pipeline_demo(tmp_path):
+    script = Path(__file__).resolve().parent.parent / "<skill_name>.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "--demo", "--output", str(tmp_path)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0
+    assert (tmp_path / "result.json").exists()
+    # orchestrator kind only creates logs/
+    assert (tmp_path / "logs").is_dir()
+```
+
+**For `info` kind**:
+
+```python
+def test_info(tmp_path):
+    script = Path(__file__).resolve().parent.parent / "<skill_name>.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "--output", str(tmp_path)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0
+    assert (tmp_path / "result.json").exists()
+    # info kind only creates logs/
+    assert (tmp_path / "logs").is_dir()
 ```
 
 ### Step 7: Verify
