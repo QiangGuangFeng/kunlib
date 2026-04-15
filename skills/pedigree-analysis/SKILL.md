@@ -104,8 +104,12 @@ You are **Pedigree Analysis**, a KunLib skill for comprehensive aquaculture pedi
 
 ## Input Format
 
+`--input` 是 KunLib 框架注入的**输入目录**。系谱 CSV 文件须放在该目录中，默认文件名为 `pedigree.csv`，也可通过 `--pedfile` 指定其他文件名。
+
 | Item | Requirement |
 |------|-------------|
+| `--input` | 输入目录（KunLib 框架注入） |
+| 默认文件名 | `pedigree.csv`（可通过 `--pedfile` 覆盖） |
 | Column order | Col 1 = Individual ID, Col 2 = Sire ID, Col 3 = Dam ID |
 | Column names | Any (standardised internally) |
 | Missing parents | `NA`, `0`, or `*` |
@@ -118,12 +122,21 @@ You are **Pedigree Analysis**, a KunLib skill for comprehensive aquaculture pedi
 # Default tasks (stats + inbreeding + visual) with synthetic demo data
 kunlib run pedigree-analysis --demo --output /tmp/ped_demo
 
-# Direct execution
+# Direct execution (demo)
 python skills/pedigree-analysis/pedigree_analysis.py --demo --output /tmp/ped_demo
 
-# All modules with real data
-python skills/pedigree-analysis/pedigree_analysis.py \
-  --input /path/to/pedigree.csv \
+# All modules with real data — default pedfile name (pedigree.csv)
+kunlib run pedigree-analysis \
+  --input /path/to/input_dir \
+  --tasks all \
+  --timevar Year \
+  --foundervar Line \
+  --output /tmp/ped_all
+
+# Custom pedfile name (e.g., shrimp_2024.csv inside input_dir)
+kunlib run pedigree-analysis \
+  --input /path/to/input_dir \
+  --pedfile shrimp_2024.csv \
   --tasks all \
   --timevar Year \
   --foundervar Line \
@@ -131,7 +144,7 @@ python skills/pedigree-analysis/pedigree_analysis.py \
 
 # Specific modules with candidate tracing
 python skills/pedigree-analysis/pedigree_analysis.py \
-  --input /path/to/pedigree.csv \
+  --input /path/to/input_dir \
   --tasks stats,inbreeding,visual \
   --cand "G5_F01_001,G5_F01_002" \
   --trace up --tracegen 3 \
@@ -140,14 +153,14 @@ python skills/pedigree-analysis/pedigree_analysis.py \
 
 # Relationship matrix (optional full export)
 python skills/pedigree-analysis/pedigree_analysis.py \
-  --input /path/to/pedigree.csv \
+  --input /path/to/input_dir \
   --tasks matrix \
   --mat-method A --mat-compact --export-matrix \
   --output /tmp/ped_matrix
 
 # Generation interval
 python skills/pedigree-analysis/pedigree_analysis.py \
-  --input /path/to/pedigree.csv \
+  --input /path/to/input_dir \
   --tasks interval \
   --timevar Year \
   --output /tmp/ped_interval
@@ -157,9 +170,10 @@ python skills/pedigree-analysis/pedigree_analysis.py \
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--input` | path | — | 输入系谱 CSV *(框架自动注入)* |
-| `--output` | path | required | 输出目录 *(框架自动注入)* |
+| `--input` | path | — | 输入目录 *(KunLib 框架自动注入)* |
+| `--output` | path | required | 输出目录 *(KunLib 框架自动注入)* |
 | `--demo` | flag | false | 使用合成水产系谱（5代 × 30家系 × 30个体，含近交） |
+| `--pedfile` | str | `pedigree.csv` | 输入目录中的系谱 CSV 文件名 |
 | `--tasks` | str | `stats,inbreeding,visual` | 逗号分隔的分析模块；`all` 运行全部7个模块 |
 | `--cand` | str | — | 候选个体 ID（逗号分隔），为空则分析全部 |
 | `--trace` | str | `up` | 候选追溯方向：`up` / `down` / `all` |

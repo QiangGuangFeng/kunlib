@@ -216,8 +216,10 @@ def _write_report(
             format="csv",
             required_fields=["Ind", "Sire", "Dam"],
             description=(
-                "系谱文件：前3列必须按顺序为个体ID、父本ID、母本ID（列名任意）。"
+                "系谱文件（默认名 pedigree.csv，可通过 --pedfile 指定其他文件名）："
+                "前3列必须按顺序为个体ID、父本ID、母本ID（列名任意）。"
                 "缺失亲本用 NA/0/*。可附加 Year、Sex、Line 等列。"
+                "文件须位于 --input 指定的输入目录中。"
             ),
         ),
     ],
@@ -232,6 +234,7 @@ def _write_report(
     emoji="🐟",
     params=[
         Param("demo", is_flag=True, help="使用合成水产系谱运行（约4560个个体，5代）"),
+        Param("pedfile", default="pedigree.csv", help="输入目录中的系谱 CSV 文件名（默认: pedigree.csv）"),
         Param(
             "tasks",
             default=DEFAULT_TASKS,
@@ -279,13 +282,10 @@ def run(args: argparse.Namespace) -> KunResult:
     # ---- Check Rscript availability ----
     bins = _check_bins()
     if bins["Rscript"] is None:
-        raise SystemExit("Error: Rscript not found on PATH. Install R ≥ 4.2.")
+        raise RuntimeError("Rscript not found on PATH. Install R ≥ 4.2.")
 
     # ---- Resolve tasks ----
-    try:
-        tasks_set = _resolve_tasks(args.tasks)
-    except ValueError as exc:
-        raise SystemExit(f"Error: {exc}") from exc
+    tasks_set = _resolve_tasks(args.tasks)
     tasks_str = ",".join(sorted(tasks_set))
 
     # ---- Resolve input file ----
@@ -294,10 +294,20 @@ def run(args: argparse.Namespace) -> KunResult:
         input_path = work_dir / "demo_ped.csv"
     else:
         if not args.input:
-            raise SystemExit("Error: --input is required when not using --demo")
-        input_path = Path(args.input)
+            raise ValueError("--input is required when not using --demo")
+        input_dir = Path(args.input)
+        if not input_dir.exists():
+            raise FileNotFoundError(f"Input directory not found: {input_dir}")
+        if not input_dir.is_dir():
+            raise NotADirectoryError(f"--input must be a directory, got: {input_dir}")
+        input_path = input_dir / args.pedfile
         if not input_path.exists():
-            raise SystemExit(f"Error: input file not found: {input_path}")
+            raise FileNotFoundError(
+                f"Pedigree file not found: {input_path} "
+                f"(use --pedfile to specify a different filename)"
+            )
+        if not input_path.is_file():
+            raise ValueError(f"Expected a file at: {input_path}")
 
     # ---- Validate pedigree ----
     pedigree_info = _validate_pedigree(input_path)
