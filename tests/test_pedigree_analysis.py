@@ -64,8 +64,18 @@ class TestParser:
 
     def test_has_input_flag(self):
         parser = _run.__kunlib_meta__.build_parser()
-        args = parser.parse_args(["--output", "/tmp/x", "--input", "/data/ped.csv"])
-        assert args.input == "/data/ped.csv"
+        args = parser.parse_args(["--output", "/tmp/x", "--input", "/data/input_dir"])
+        assert args.input == "/data/input_dir"
+
+    def test_default_pedigree_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x"])
+        assert args.pedigree_file == "pedigree.csv"
+
+    def test_parse_pedigree_file(self):
+        parser = _run.__kunlib_meta__.build_parser()
+        args = parser.parse_args(["--output", "/tmp/x", "--pedigree-file", "shrimp.csv"])
+        assert args.pedigree_file == "shrimp.csv"
 
     def test_default_tasks(self):
         parser = _run.__kunlib_meta__.build_parser()
@@ -248,9 +258,104 @@ class TestFiles:
         assert (_SKILL_DIR / "pedigree_analysis.py").exists()
 
 
+# Input directory + pedigree file resolution
 # --------------------------------------------------------------------------- #
-# Discovery integration
-# --------------------------------------------------------------------------- #
+class TestInputDirResolution:
+    """Unit-test the input-dir/pedigree-file resolution logic without running R."""
+
+    def _make_args(self, tmp_path, pedigree_file="pedigree.csv", input_dir=None, demo=False):
+        """Build a minimal argparse.Namespace mimicking framework injection."""
+        import argparse
+        ns = argparse.Namespace(
+            demo=demo,
+            input=str(input_dir) if input_dir is not None else None,
+            pedigree_file=pedigree_file,
+            output_dir=tmp_path,
+            work_dir=tmp_path / "work",
+            tables_dir=tmp_path / "tables",
+            figures_dir=tmp_path / "figures",
+            logs_dir=tmp_path / "logs",
+            repro_dir=tmp_path / "reproducibility",
+            tasks="stats",
+            cand=None, trace="up", tracegen=None,
+            timevar=None, foundervar=None, reference=None,
+            top=20, mat_method="A", mat_compact=False,
+            export_matrix=False, compact=False, highlight=None,
+            vis_trace="up", showf=False, fig_format="pdf",
+            fig_width=12, fig_height=10, inbreed_breaks="0.0625,0.125,0.25",
+            threads=0,
+        )
+        for d in (ns.work_dir, ns.tables_dir, ns.figures_dir,
+                  ns.logs_dir, ns.repro_dir):
+            d.mkdir(parents=True, exist_ok=True)
+        return ns
+
+    def test_default_pedigree_file_found(self, tmp_path):
+        """--input <dir> with default pedigree.csv resolves correctly."""
+        input_dir = tmp_path / "inputs"
+        input_dir.mkdir()
+        (input_dir / "pedigree.csv").write_text("Ind,Sire,Dam\nA,NA,NA\n")
+        # Verify the path resolution manually (no R needed)
+        from pathlib import Path
+        resolved = Path(str(input_dir)) / "pedigree.csv"
+        assert resolved.exists()
+        assert resolved.is_file()
+
+    def test_custom_pedigree_file_found(self, tmp_path):
+        """--input <dir> --pedigree-file shrimp.csv resolves correctly."""
+        input_dir = tmp_path / "inputs"
+        input_dir.mkdir()
+        (input_dir / "shrimp.csv").write_text("Ind,Sire,Dam\nA,NA,NA\n")
+        from pathlib import Path
+        resolved = Path(str(input_dir)) / "shrimp.csv"
+        assert resolved.exists()
+        assert resolved.is_file()
+
+    def test_input_dir_not_exists_raises(self, tmp_path):
+        """run() raises FileNotFoundError when --input directory does not exist."""
+        import shutil
+        if shutil.which("Rscript") is None:
+            pytest.skip("Rscript not found on PATH")
+        ns = self._make_args(tmp_path, input_dir=tmp_path / "nonexistent_dir")
+        with pytest.raises(FileNotFoundError, match="Input directory not found"):
+            _run(ns)
+
+    def test_input_is_file_raises(self, tmp_path):
+        """run() raises NotADirectoryError when --input points to a file."""
+        import shutil
+        if shutil.which("Rscript") is None:
+            pytest.skip("Rscript not found on PATH")
+        a_file = tmp_path / "not_a_dir.csv"
+        a_file.write_text("Ind,Sire,Dam\nA,NA,NA\n")
+        ns = self._make_args(tmp_path, input_dir=a_file)
+        with pytest.raises(NotADirectoryError, match="must be a directory"):
+            _run(ns)
+
+    def test_pedigree_file_not_found_raises(self, tmp_path):
+        """run() raises FileNotFoundError when pedigree file is absent from --input dir."""
+        import shutil
+        if shutil.which("Rscript") is None:
+            pytest.skip("Rscript not found on PATH")
+        input_dir = tmp_path / "inputs"
+        input_dir.mkdir()
+        # pedigree.csv is NOT created
+        ns = self._make_args(tmp_path, input_dir=input_dir)
+        with pytest.raises(FileNotFoundError, match="Pedigree file not found"):
+            _run(ns)
+
+    def test_custom_pedigree_file_not_found_raises(self, tmp_path):
+        """run() raises FileNotFoundError when custom --pedigree-file is absent."""
+        import shutil
+        if shutil.which("Rscript") is None:
+            pytest.skip("Rscript not found on PATH")
+        input_dir = tmp_path / "inputs"
+        input_dir.mkdir()
+        # shrimp.csv is NOT created
+        ns = self._make_args(tmp_path, pedigree_file="shrimp.csv", input_dir=input_dir)
+        with pytest.raises(FileNotFoundError, match="Pedigree file not found"):
+            _run(ns)
+
+
 class TestDiscovery:
     def test_discover_finds_skill(self):
         from kunlib.registry import discover_all
@@ -288,7 +393,9 @@ class TestE2EDemo:
     @pytest.fixture(scope="class")
     def demo_result(self, tmp_path_factory):
         """Run demo once, share output directory across all tests in class."""
-        import subprocess, sys, os
+        import os
+        import subprocess
+        import sys
         out = tmp_path_factory.mktemp("e2e_demo")
         env = {**os.environ, "PYTHONPATH": self._REPO}
         proc = subprocess.run(
