@@ -186,6 +186,7 @@ def _write_report(
 # --------------------------------------------------------------------------- #
 @skill(
     name="pedigree-analysis",
+    kind="data",
     version="0.1.0",
     description=(
         "Aquaculture pedigree analysis: tidying, statistics, inbreeding, "
@@ -207,7 +208,7 @@ def _write_report(
     chaining_partners=["lagm-mating", "hiblup-ebv"],
     input_formats=["csv (Ind/Sire/Dam + optional Year/Sex/Line columns)"],
     requires=SkillRequires(
-        bins=["python3", "Rscript"],
+        bins=["Rscript"],
         r_packages=["visPedigree", "data.table", "jsonlite"],
     ),
     input_schema=[
