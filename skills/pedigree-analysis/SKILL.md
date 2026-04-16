@@ -3,6 +3,7 @@ name: pedigree-analysis
 description: >-
   水产动物家系育种系谱分析：系谱整理、群体统计、近交系数、遗传多样性、
   世代间隔、血统比例、关系矩阵及系谱可视化，基于 visPedigree 包。
+kind: data
 version: 0.1.0
 author: luansheng
 license: GPL-3.0
@@ -19,7 +20,7 @@ tags:
 metadata:
   kunlib:
     requires:
-      bins: [python3, Rscript]
+      bins: [Rscript]
       r_packages: [visPedigree, data.table, jsonlite]
       python_packages: []
       bioc_packages: []
@@ -242,7 +243,6 @@ python skills/pedigree-analysis/pedigree_analysis.py \
 
 | Binary | Version | Install Method | Notes |
 |--------|---------|----------------|-------|
-| `python3` | ≥ 3.10 | `conda install python=3.10` | KunLib 框架需要 |
 | `Rscript` | ≥ 4.2 (建议 4.4+) | `conda install -c conda-forge r-base` | R 脚本运行环境 |
 
 ### R Packages
