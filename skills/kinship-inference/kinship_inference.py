@@ -322,8 +322,9 @@ def run(args: argparse.Namespace) -> KunResult:
             f"stderr: {(e.stderr or '')[:500]}"
         )
 
-    # --- Optionally run COLONY ---
+    # --- Optionally run COLONY (background / nohup mode) ---
     colony_status = "skipped"
+    colony_pid = None
     if args.run_colony:
         colony_dat = work_dir / "colony.dat"
         if colony_dat.exists():
@@ -331,25 +332,30 @@ def run(args: argparse.Namespace) -> KunResult:
                 args.mpirun_bin, "-np", str(args.n_threads),
                 args.colony_bin, f"IFN:{colony_dat}",
             ]
+            stdout_log = logs_dir / "colony_stdout.log"
+            stderr_log = logs_dir / "colony_stderr.log"
+            pid_file = logs_dir / "colony.pid"
             try:
-                colony_result = subprocess.run(
-                    colony_cmd, cwd=str(work_dir),
-                    capture_output=True, text=True, check=True,
+                fout = open(stdout_log, "w", encoding="utf-8")
+                ferr = open(stderr_log, "w", encoding="utf-8")
+                proc = subprocess.Popen(
+                    colony_cmd,
+                    cwd=str(work_dir),
+                    stdout=fout,
+                    stderr=ferr,
+                    start_new_session=True,
                 )
-                colony_status = "success"
-                (logs_dir / "colony_stdout.log").write_text(
-                    colony_result.stdout or "", encoding="utf-8",
-                )
-                (logs_dir / "colony_stderr.log").write_text(
-                    colony_result.stderr or "", encoding="utf-8",
-                )
-            except subprocess.CalledProcessError as e:
-                colony_status = "failed"
-                (logs_dir / "colony_stdout.log").write_text(
-                    e.stdout or "", encoding="utf-8",
-                )
-                (logs_dir / "colony_stderr.log").write_text(
-                    e.stderr or "", encoding="utf-8",
+                colony_pid = proc.pid
+                colony_status = "background"
+                pid_file.write_text(str(colony_pid), encoding="utf-8")
+                print(
+                    f"[kinship-inference] COLONY launched in background "
+                    f"(PID={colony_pid}).\n"
+                    f"  stdout → {stdout_log}\n"
+                    f"  stderr → {stderr_log}\n"
+                    f"  PID file → {pid_file}\n"
+                    f"  To monitor: tail -f {stdout_log}\n"
+                    f"  To stop:    kill {colony_pid}"
                 )
             except FileNotFoundError:
                 colony_status = "not_found"
@@ -362,6 +368,8 @@ def run(args: argparse.Namespace) -> KunResult:
     # --- Read pipeline summary ---
     summary = _read_pipeline_summary(work_dir)
     summary["colony_run_status"] = colony_status
+    if colony_pid is not None:
+        summary["colony_pid"] = colony_pid
 
     # --- Collect output files ---
     tables = []
@@ -398,10 +406,12 @@ def run(args: argparse.Namespace) -> KunResult:
         repro_lines[-1] = repro_lines[-1][:-2]
     if args.run_colony:
         repro_lines.append("")
-        repro_lines.append("# Run COLONY")
+        repro_lines.append("# Run COLONY in background (nohup mode)")
         repro_lines.append(
-            f"{args.mpirun_bin} -np {args.n_threads} {args.colony_bin} IFN:colony.dat"
+            f"nohup {args.mpirun_bin} -np {args.n_threads} {args.colony_bin} IFN:colony.dat "
+            f"> colony_stdout.log 2> colony_stderr.log &"
         )
+        repro_lines.append("echo $! > colony.pid")
     (repro_dir / "commands.sh").write_text(
         "\n".join(repro_lines) + "\n", encoding="utf-8",
     )
