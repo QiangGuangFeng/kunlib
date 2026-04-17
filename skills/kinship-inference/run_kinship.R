@@ -235,6 +235,7 @@ sink(file = colony_dat_path, append = TRUE)
 cat(glue("{male_cand_prob} {female_cand_prob} !probabilities that the father and mother of an offspring are included in candidates
 {male_cand_num} {female_cand_num} !Numbers of candidate males and females
 "))
+cat("\n")
 sink()
 
 # Write sire genotype
