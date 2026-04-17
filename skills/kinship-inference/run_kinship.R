@@ -290,9 +290,9 @@ for (f in qc_files) {
 # Write a summary JSON-like file for Python to read
 summary_path <- file.path(work_dir, "pipeline_summary.csv")
 summary_dt <- data.table(
-  key = c("n_target_snps", "n_snp_chips", "n_samples_merged",
-          "n_offspring", "n_sires", "n_dams", "n_loci_after_qc",
-          "project_name"),
+  metric = c("n_target_snps", "n_snp_chips", "n_samples_merged",
+             "n_offspring", "n_sires", "n_dams", "n_loci_after_qc",
+             "project_name"),
   value = c(nrow(snp_1K_dt), length(snp_files), ncol(gt_merged) - 4,
             nrow(offspring_tidy_gt_dt),
             if (!is.null(male_tidy_gt_dt)) nrow(male_tidy_gt_dt) else 0,
