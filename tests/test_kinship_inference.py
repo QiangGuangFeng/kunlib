@@ -2,8 +2,6 @@
 import importlib.util
 from pathlib import Path
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Load the skill module (folder name contains a hyphen, so normal import fails)
 # ---------------------------------------------------------------------------
