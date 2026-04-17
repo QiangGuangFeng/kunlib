@@ -221,7 +221,7 @@ sink()
 marker_type <- rep(marker_type_v, length(snp_names))
 dropout_rate <- rep(dropout_rate_v, length(snp_names))
 error_rate <- rep(error_rate_v, length(snp_names))
-errorRate_dt <- data.table(snp_names, marker_type, dropout_rate, error_rate)
+errorRate_dt <- data.table(paste0("snp",1:length(snp_names)),marker_type,dropout_rate,error_rate)
 fwrite(t(errorRate_dt), colony_dat_path, append = TRUE, quote = FALSE, sep = " ", row.names = FALSE, col.names = FALSE)
 
 # Write offspring genotype
