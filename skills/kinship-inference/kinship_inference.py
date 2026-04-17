@@ -335,6 +335,8 @@ def run(args: argparse.Namespace) -> KunResult:
             stdout_log = logs_dir / "colony_stdout.log"
             stderr_log = logs_dir / "colony_stderr.log"
             pid_file = logs_dir / "colony.pid"
+            fout = None
+            ferr = None
             try:
                 fout = open(stdout_log, "w", encoding="utf-8")
                 ferr = open(stderr_log, "w", encoding="utf-8")
@@ -346,6 +348,8 @@ def run(args: argparse.Namespace) -> KunResult:
                     start_new_session=True,
                 )
                 colony_pid = proc.pid
+                # Status "background" means COLONY was launched as a detached
+                # process and may still be running; check colony.pid to monitor.
                 colony_status = "background"
                 pid_file.write_text(str(colony_pid), encoding="utf-8")
                 print(
@@ -364,6 +368,19 @@ def run(args: argparse.Namespace) -> KunResult:
                     f"mpirun binary: {args.mpirun_bin}\n",
                     encoding="utf-8",
                 )
+            except OSError as e:
+                colony_status = "failed"
+                (logs_dir / "colony_stderr.log").write_text(
+                    f"Failed to launch COLONY: {e}\n",
+                    encoding="utf-8",
+                )
+            finally:
+                # Close file handles in parent process; the child process
+                # has inherited its own copies of the file descriptors.
+                if fout is not None:
+                    fout.close()
+                if ferr is not None:
+                    ferr.close()
 
     # --- Read pipeline summary ---
     summary = _read_pipeline_summary(work_dir)
