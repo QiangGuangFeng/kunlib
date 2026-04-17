@@ -40,6 +40,7 @@ suppressPackageStartupMessages({
   library(magrittr)
   library(glue)
   library(stringi)
+  library(xfun)
 })
 
 # ---- Parse arguments ----
