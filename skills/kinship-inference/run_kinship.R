@@ -82,7 +82,14 @@ dropout_rate_v    <- as.numeric(get_arg("--dropout-rate", "0.001"))
 error_rate_v      <- as.numeric(get_arg("--error-rate", "0.05"))
 
 # ---- Source helper functions ----
-script_dir <- dirname(normalizePath(sys.frame(1)$ofile %||% "."))
+# Reliably determine script directory when called via Rscript
+initial_args <- commandArgs(trailingOnly = FALSE)
+file_arg <- grep("^--file=", initial_args, value = TRUE)
+if (length(file_arg) > 0) {
+  script_dir <- dirname(normalizePath(sub("^--file=", "", file_arg[1])))
+} else {
+  script_dir <- dirname(normalizePath(sys.frame(1)$ofile %||% "."))
+}
 source(file.path(script_dir, "functions_colony.R"))
 
 # ---- Read SNP list ----

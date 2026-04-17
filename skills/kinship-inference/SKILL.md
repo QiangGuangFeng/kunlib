@@ -193,7 +193,7 @@ python skills/kinship-inference/kinship_inference.py \
 | `Rscript` | ≥ 4.0 | `conda install -c conda-forge r-base` | R 脚本运行环境 |
 | `plink` | 1.9 | `conda install -c bioconda plink` | 基因型格式转换与质控 |
 | `mpirun` | — | Intel MPI: 服务器上已安装 | ⚠️ 仅 `--run-colony` 模式需要 |
-| `colony2p.ifort.impi2018.out` | 2.0+ | Manual download from COLONY official website | ⚠️ 仅 `--run-colony` 模式需要；需手动下载安装，请参阅 https://www.zsl.org/about-us/resources/software/colony |
+| `colony2p.ifort.impi2018.out` | 2.0+ | Manual download from COLONY official website | ⚠️ 仅 `--run-colony` 模式需要；需手动下载安装，请参阅 https://www.zsl.org/about-us/resources/software/colony 。二进制名称因编译环境而异，请通过 `--colony-bin` 指定实际文件名 |
 
 ### R Packages
 
