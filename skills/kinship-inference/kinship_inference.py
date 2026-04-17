@@ -51,7 +51,7 @@ def _read_pipeline_summary(work_dir: Path) -> dict:
         with open(fpath, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                key = row.get("key", "")
+                key = row.get("metric", row.get("key", ""))
                 val = row.get("value", "")
                 # Try to convert to int
                 try:

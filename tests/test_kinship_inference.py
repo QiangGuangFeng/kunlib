@@ -2,8 +2,6 @@
 import importlib.util
 from pathlib import Path
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Load the skill module (folder name contains a hyphen, so normal import fails)
 # ---------------------------------------------------------------------------
@@ -258,6 +256,16 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 class TestPipelineSummary:
     def test_read_summary_exists(self, tmp_path):
+        summary_file = tmp_path / "pipeline_summary.csv"
+        summary_file.write_text(
+            "metric,value\nn_target_snps,1140\nn_offspring,100\nproject_name,Test\n"
+        )
+        result = _read_pipeline_summary(tmp_path)
+        assert result["n_target_snps"] == 1140
+        assert result["n_offspring"] == 100
+        assert result["project_name"] == "Test"
+
+    def test_read_summary_legacy_key_column(self, tmp_path):
         summary_file = tmp_path / "pipeline_summary.csv"
         summary_file.write_text(
             "key,value\nn_target_snps,1140\nn_offspring,100\nproject_name,Test\n"
